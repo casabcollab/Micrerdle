@@ -1,0 +1,1436 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Micrerdle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Micrerdle. Gram-stain palette: safranin pink base, crystal-violet plum ink. */
+:root {
+  --bg: #F2C5E8;          /* base pink */
+  --surface: #FBE7F5;
+  --ink: #2E0821;
+  --muted: #7A3F66;
+  --line: #DFA3CF;
+  --stain: #6A0F4A;       /* plum: logo, text, buttons */
+  --stain-soft: #F9DDF1;
+  --logo: #6A0F4A; --logo-shadow: #C77DB3;
+  --ph-line: #6A0F4A; --ph-fill: #FFFFFF; --ph-sheath: #9B2A7C; --ph-dark: #3B0628;
+  --dish-shadow: #DFA9D2; --glass: #FFF4FB; --glass-side: #E9B4DB;
+  --hit: #2C8455; --near: #D4AC2B; --miss: #8D95A7;
+  --on-tile: #FFFFFF; --on-near: #2E0821; --px-shadow: #DFA3CF;
+  --scope-dark: #1A0915; --scope-text: #F7E1F1; --scope-muted: #C79AB9;
+  /* hint types: each has its own colour (text/border) and a soft tint (tag background) */
+  --t-lab: #4B45B0; --t-lab-soft: #E4E3F7;
+  --t-exposure: #5F6E12; --t-exposure-soft: #ECEFD2;
+  --t-biology: #12707A; --t-biology-soft: #D8EFF1;
+  --t-presentation: #2F7A46; --t-presentation-soft: #DDF0E2;
+  --t-treatment: #2B5C9E; --t-treatment-soft: #E1EAF7;
+  --t-history: #8A5A12; --t-history-soft: #F4EAD5;
+  --t-special: #A8322F; --t-special-soft: #F7E1DF;
+  --t-etymology: #7A2E83; --t-etymology-soft: #EEDFF0;
+  --font-display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --font-pixel: "Press Start 2P", "Silkscreen", ui-monospace, Menlo, monospace;
+  --font-pixel-small: "Silkscreen", "Press Start 2P", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1C0B18; --surface: #2A1225; --ink: #F7E1F1; --muted: #C79AB9; --line: #4A2340;
+    --stain: #F2A6DC; --stain-soft: #3A1631;
+    --logo: #F2A6DC; --logo-shadow: #6A0F4A;
+    --ph-line: #F2A6DC; --ph-fill: #FFFFFF; --ph-sheath: #C45FA6; --ph-dark: #F7E1F1;
+    --dish-shadow: #12060F; --glass: #F7E1F1; --glass-side: #4A2340;
+    --px-shadow: #12060F;
+    --t-lab: #A9A6F2; --t-lab-soft: #24233F;
+    --t-exposure: #C9D66A; --t-exposure-soft: #2C3014;
+    --t-biology: #7FD3DC; --t-biology-soft: #15302F;
+    --t-presentation: #86D6A0; --t-presentation-soft: #17331F;
+    --t-treatment: #8DB4EC; --t-treatment-soft: #1F2C42;
+    --t-history: #E2B66B; --t-history-soft: #3A2E1A;
+    --t-special: #F09A92; --t-special-soft: #3B2120;
+    --t-etymology: #C98BD3; --t-etymology-soft: #33243B;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+/* play transition: full-screen microscope */
+#scope { position: fixed; inset: 0; z-index: 40; background: var(--scope-dark); cursor: pointer; overflow: hidden; }
+#scopeCanvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+#scopeCap { position: absolute; left: 0; right: 0; bottom: calc(44px + env(safe-area-inset-bottom, 0px)); margin: 0; text-align: center;
+  font-family: var(--font-pixel); font-size: 12px; line-height: 1.5; color: var(--scope-text); padding-inline: 16px; }
+.scope-skip { position: absolute; margin: 0; top: calc(16px + env(safe-area-inset-top, 0px)); right: calc(16px + env(safe-area-inset-right, 0px));
+  font-family: var(--font-pixel-small); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--scope-muted); }
+html, body { min-height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-display); font-size: 17px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Title screen ---------- */
+.title { position: relative; min-height: calc(100vh - 76px); max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; text-align: center; }
+.logo-canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+.tagline { font-family: var(--font-pixel-small); font-size: 13px; color: var(--muted); margin: -12px 0 0; letter-spacing: .06em; text-transform: uppercase; }
+.scene { width: min(900px, calc(100vw - 32px)); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+#sceneCanvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; max-width: 100%; cursor: pointer; }
+.play-btn { font-family: var(--font-pixel); font-size: 14px; line-height: 1.4; color: var(--bg); background: var(--stain); border: 0; border-radius: 0; padding: 16px 22px; cursor: pointer;
+  box-shadow: 0 -4px 0 0 var(--stain) inset, 4px 0 0 0 var(--bg), -4px 0 0 0 var(--bg), 0 6px 0 0 var(--ink); transition: transform .08s ease, box-shadow .08s ease; }
+.play-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 0 var(--ink); }
+.play-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 0 var(--ink); }
+.play-btn:focus-visible { outline: 4px solid var(--stain-soft); outline-offset: 6px; }
+.case-line { font-family: var(--font-pixel-small); font-size: 12px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin: -8px 0 0; }
+.arch-btn { font-family: var(--font-pixel-small); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding: 8px 16px; border-radius: 0; cursor: pointer;
+  background: transparent; color: var(--stain); border: 2px solid var(--stain); box-shadow: 0 3px 0 0 var(--line); margin-top: -8px; }
+.arch-btn:hover { color: var(--ink); }
+.arch-btn:active { transform: translateY(2px); box-shadow: none; }
+.howto { max-width: 440px; text-align: left; font-family: var(--font-display); font-size: 14.5px; color: var(--ink); }
+.howto summary { cursor: pointer; text-align: center; font-family: var(--font-pixel-small); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); list-style: none; }
+.howto summary::-webkit-details-marker { display: none; }
+.howto summary:hover { color: var(--ink); }
+.howto ul { margin: 12px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.howto.info p { margin: 12px 0 0; line-height: 1.55; }
+.howto.info a { color: var(--stain); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.howto.info a:hover { color: var(--ink); }
+.byline { font-family: var(--font-pixel-small); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.music-btn { font-family: var(--font-pixel-small); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding: 8px 14px; border-radius: 0; cursor: pointer;
+  background: transparent; color: var(--muted); border: 2px solid var(--line); }
+.music-btn[aria-pressed="true"] { color: var(--stain); border-color: var(--stain); }
+.music-btn:hover { color: var(--ink); }
+.credits { margin: 6px 0 0; font-family: var(--font-pixel-small); font-size: 12px; letter-spacing: .05em; color: var(--muted); }
+.credits a { color: var(--stain); text-decoration: underline; text-underline-offset: 3px; }
+.credits a:hover { color: var(--ink); }
+.authors { position: fixed; right: 18px; bottom: 14px; display: flex; align-items: flex-end; gap: 7px;
+  font-family: var(--font-pixel-small); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.authors .au-h { padding-bottom: 2px; }
+.authors figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.authors svg { width: 24px; height: 24px; display: block; image-rendering: pixelated; }
+@media (max-width: 720px) { .authors { position: static; align-self: flex-end; margin-top: -6px; } }
+@media (max-width: 480px) { .play-btn { font-size: 12px; } }
+
+/* ---------- Game screen (ported from Generdle, simplified) ---------- */
+.wrap { max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.home-link { background: none; border: 0; padding: 0; cursor: pointer; border-radius: 0; }
+.home-link:focus-visible { outline: 3px solid var(--stain-soft); outline-offset: 4px; }
+.head-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sound-btn { font-family: var(--font-pixel-small); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; padding: 6px 11px; border-radius: 0; cursor: pointer;
+  background: transparent; color: var(--muted); border: 2px solid var(--line); }
+.sound-btn:hover { color: var(--ink); border-color: var(--muted); }
+.meta, .meter-label { font-family: var(--font-pixel-small); font-size: 12px; letter-spacing: .05em; color: var(--muted); text-transform: uppercase; }
+
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 31; background: var(--bg); }
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg);
+  display: flex; flex-direction: column; gap: 12px; padding-block: 10px 12px; margin-block: -10px 0;
+  box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax -4px -100vmax);
+  border-bottom: 3px dashed var(--line); }
+/* hint meter: one pixel block per hint */
+.meter { display: flex; align-items: center; gap: 12px; }
+.meter-cells { display: flex; gap: 4px; }
+.meter-cells i { width: 18px; height: 12px; background: var(--line); }
+.meter-cells i.on { background: var(--stain); }
+.meter.won .meter-cells i.on { background: var(--hit); }
+.meter.lost .meter-cells i.on { background: var(--miss); }
+
+.hints { display: flex; flex-direction: column; gap: 18px; list-style: none; margin: 0; padding: 0; }
+.hint { --t: var(--stain); --t-soft: var(--stain-soft); --bx: var(--line);
+  background: var(--surface); padding: 14px 18px 16px; display: flex; flex-direction: column; gap: 6px; animation: rise .3s steps(3) both;
+  box-shadow: 0 -3px 0 0 var(--bx), 0 3px 0 0 var(--bx), -3px 0 0 0 var(--bx), 3px 0 0 0 var(--bx), 7px 7px 0 0 var(--px-shadow); }
+.hint.lab          { --t: var(--t-lab);          --t-soft: var(--t-lab-soft); }
+.hint.exposure     { --t: var(--t-exposure);     --t-soft: var(--t-exposure-soft); }
+.hint.biology      { --t: var(--t-biology);      --t-soft: var(--t-biology-soft); }
+.hint.presentation { --t: var(--t-presentation); --t-soft: var(--t-presentation-soft); }
+.hint.treatment    { --t: var(--t-treatment);    --t-soft: var(--t-treatment-soft); }
+.hint.history      { --t: var(--t-history);      --t-soft: var(--t-history-soft); }
+.hint.special      { --t: var(--t-special);      --t-soft: var(--t-special-soft); }
+.hint.etymology    { --t: var(--t-etymology);    --t-soft: var(--t-etymology-soft); }
+.hint.latest { --bx: var(--t); }
+.hint-head { display: flex; align-items: center; gap: 10px; }
+.hint-head .n { font-family: var(--font-pixel); font-size: 10px; color: var(--muted); }
+.hint-tag { font-family: var(--font-pixel-small); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--t); background: var(--t-soft); padding: 4px 9px 4px 7px; display: inline-flex; align-items: center; gap: 7px; }
+.hint-tag svg, .tile svg { display: block; shape-rendering: crispEdges; }
+.hint p { margin: 0; }
+.hint p b { font-weight: 700; color: var(--ink); }
+.hint.collapsed { padding: 10px 16px 11px; gap: 4px; cursor: pointer; }
+.hint.collapsed p { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; color: var(--muted); font-size: 15px; }
+.hint.collapsible .hint-head::after { content: "+"; margin-left: auto; font-family: var(--font-pixel); font-size: 12px; color: var(--muted); }
+.hint.collapsible.open .hint-head::after { content: "−"; }
+.hint.collapsible:hover { --bx: var(--muted); }
+.hint.collapsible:focus-visible { outline: 3px solid var(--stain-soft); outline-offset: 6px; }
+@keyframes rise { from { opacity: .4; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.play { display: flex; flex-direction: column; gap: 10px; }
+.reveal, .play { scroll-margin-top: 140px; }
+.field { position: relative; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+input#guess { flex: 1 1 240px; min-width: 0; font: 500 17px var(--font-display); color: var(--ink);
+  background: var(--surface); border: 3px solid var(--line); border-radius: 0; padding: 12px 14px; }
+input#guess:focus { outline: none; border-color: var(--stain); box-shadow: 5px 5px 0 0 var(--stain-soft); }
+button.btn-main, button.btn-ghost { font-family: var(--font-pixel-small); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; border-radius: 0;
+  padding: 12px 18px; cursor: pointer; border: 2px solid transparent; transition: transform .06s steps(2), box-shadow .06s steps(2); }
+button:focus-visible { outline: 3px solid var(--stain-soft); outline-offset: 2px; }
+.btn-main { background: var(--stain); color: var(--bg); box-shadow: 0 4px 0 0 var(--ink); }
+.btn-main:hover { transform: translateY(-1px); box-shadow: 0 5px 0 0 var(--ink); }
+.btn-main:active { transform: translateY(3px); box-shadow: 0 1px 0 0 var(--ink); }
+.btn-ghost { background: transparent; color: var(--muted); border-color: var(--line) !important; box-shadow: 0 3px 0 0 var(--line); }
+.btn-ghost:hover { color: var(--ink); }
+.btn-ghost:active { transform: translateY(2px); box-shadow: 0 1px 0 0 var(--line); }
+.suggest { --bx: var(--stain); position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 5; list-style: none; margin: 0; padding: 4px;
+  background: var(--surface); max-height: 300px; overflow-y: auto;
+  box-shadow: 0 -3px 0 0 var(--bx), 0 3px 0 0 var(--bx), -3px 0 0 0 var(--bx), 3px 0 0 0 var(--bx), 7px 7px 0 0 var(--px-shadow); }
+.suggest li { padding: 9px 12px; cursor: pointer; font-family: var(--font-display); font-size: 16px; display: flex; justify-content: space-between; gap: 10px; }
+.suggest li small { color: var(--muted); font-family: var(--font-mono); font-size: 11px; align-self: center; text-align: right; }
+.suggest li[aria-selected="true"], .suggest li:hover { background: var(--stain-soft); }
+.msg { font-family: var(--font-pixel-small); font-size: 12px; letter-spacing: .04em; color: var(--muted); min-height: 1.3em; margin: 0; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--font-pixel-small); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; display: inline-block; }
+
+.guesses { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.g { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: center; }
+.tile { width: 34px; height: 34px; display: grid; place-items: center; color: var(--on-tile);
+  box-shadow: inset -3px -3px 0 0 rgba(0,0,0,.22), inset 3px 3px 0 0 rgba(255,255,255,.28); }
+.tile.hit { background: var(--hit); } .tile.near { background: var(--near); color: var(--on-near); }
+.tile.miss { background: var(--miss); } .tile.skip { background: transparent; box-shadow: inset 0 0 0 2px var(--miss); color: var(--muted); }
+.g-body { min-width: 0; }
+.g-name { font-family: var(--font-pixel-small); font-weight: 700; font-size: 14px; letter-spacing: .03em; }
+.g-note { font-size: 14px; color: var(--muted); }
+
+.reveal { --bx: var(--stain); background: var(--surface); padding: 20px 20px 22px; display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 -3px 0 0 var(--bx), 0 3px 0 0 var(--bx), -3px 0 0 0 var(--bx), 3px 0 0 0 var(--bx), 7px 7px 0 0 var(--px-shadow); }
+.verdict { font-family: var(--font-pixel-small); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--stain); margin: 0; }
+.dx { font-family: var(--font-pixel); font-weight: 400; font-size: clamp(17px, 4.6vw, 24px); line-height: 1.35; margin: 0; overflow-wrap: anywhere; }
+.dx small { display: block; font-family: var(--font-display); font-size: 15px; font-weight: 500; color: var(--muted); margin-top: 8px; }
+.summary { display: flex; flex-direction: column; gap: 10px; }
+/* a case's end animation (the art function in its case file), shown under the organism's name */
+.case-art { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-block: 4px; }
+.case-art canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; max-width: 100%; }
+.case-art .art-caption { margin: 0; text-align: center; font-family: var(--font-pixel-small); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.summary p { margin: 0; font-size: 16px; line-height: 1.55; }
+.summary p b { font-weight: 700; }
+.chart { width: 100%; border-collapse: collapse; font-family: var(--font-display); }
+.chart th, .chart td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 2px solid var(--line); }
+.chart tr:last-child th, .chart tr:last-child td { border-bottom: 0; }
+.chart th { font-family: var(--font-pixel-small); font-weight: 400; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--stain); background: var(--stain-soft); width: 38%; }
+.chart td { font-size: 15px; line-height: 1.45; }
+@media (max-width: 560px) {
+  .chart th, .chart td { padding: 7px 8px; }
+  .chart th { font-size: 10px; width: 34%; }
+  .chart td { font-size: 14px; }
+  .summary p { font-size: 15.5px; }
+}
+.share { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.share pre { margin: 0; font-family: var(--font-pixel-small); font-size: 13px; color: var(--muted); white-space: pre-wrap; flex: 1 1 180px; }
+
+footer { font-family: var(--font-pixel-small); font-size: 11px; letter-spacing: .04em; color: var(--muted); border-top: 3px dashed var(--line); padding-top: 14px;
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+footer button.btn-ghost { padding: 6px 12px; font-size: 11px; }
+
+@media (max-width: 560px) {
+  body { padding-block: 14px 32px; }
+  .wrap { gap: 16px; }
+  .topbar { gap: 8px; padding-block: 8px 10px; }
+  .meta { display: none; }
+  .sound-btn { font-size: 10px; padding: 5px 7px; }
+  .hints { gap: 14px; }
+  .hint { padding: 12px 14px 13px; gap: 5px;
+    box-shadow: 0 -3px 0 0 var(--bx), 0 3px 0 0 var(--bx), -3px 0 0 0 var(--bx), 3px 0 0 0 var(--bx), 5px 5px 0 0 var(--px-shadow); }
+  .hint p { font-size: 15.5px; line-height: 1.5; }
+  .reveal { padding: 16px 16px 18px; gap: 12px; }
+  .legend { gap: 10px; font-size: 10px; }
+  input#guess { flex-basis: 130px; font-size: 16px; padding: 11px 12px; }
+  button.btn-main, button.btn-ghost { padding: 11px 12px; font-size: 12px; }
+}
+
+/* ---------- Archive (same layout as Generdle's) ---------- */
+.archive { gap: 16px; }
+.arch-head { display: flex; align-items: center; gap: 14px; }
+.arch-head h2 { margin: 0; font-family: var(--font-pixel); font-weight: 400; font-size: 20px; }
+.arch-sub { margin: 0; font-family: var(--font-display); font-size: 14px; color: var(--muted); }
+.arch-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.arch-row { width: 100%; text-align: left; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 14px; align-items: center; cursor: pointer;
+  background: var(--surface); color: var(--ink); padding: 12px 16px; border: 0; border-radius: 0; font: inherit;
+  --bx: var(--line); box-shadow: 0 -3px 0 0 var(--bx), 0 3px 0 0 var(--bx), -3px 0 0 0 var(--bx), 3px 0 0 0 var(--bx), 6px 6px 0 0 var(--px-shadow); }
+.arch-row:hover, .arch-row:focus-visible { --bx: var(--stain); outline: none; }
+.arch-row.today { --bx: var(--stain); }
+.arch-num { font-family: var(--font-pixel); font-size: 12px; color: var(--stain); }
+.arch-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.arch-date { font-family: var(--font-pixel-small); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.arch-dx { font-family: var(--font-display); font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arch-stat { font-family: var(--font-pixel-small); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; padding: 4px 8px; white-space: nowrap; }
+.arch-stat.won { background: var(--hit); color: var(--on-tile); }
+.arch-stat.lost { background: var(--miss); color: var(--on-tile); }
+.arch-stat.going { background: var(--near); color: var(--on-near); }
+.arch-stat.new { box-shadow: inset 0 0 0 2px var(--line); color: var(--muted); }
+.foot-btns { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+</style>
+
+<section class="title" id="titleScreen">
+  <h1 class="sr-only">Micrerdle</h1>
+  <canvas class="logo-canvas" id="logoCanvas" width="168" height="40" role="img" aria-label="Micrerdle logo"></canvas>
+  <p class="tagline">A daily microbiology case</p>
+  <div class="scene" aria-hidden="true">
+    <canvas id="sceneCanvas" width="192" height="96"></canvas>
+  </div>
+  <button class="play-btn" id="playBtn" type="button">Play today's round</button>
+  <p class="case-line" id="caseLine">Case #001</p>
+  <button class="arch-btn" id="archiveBtn" type="button">Archive</button>
+  <p class="byline">By Med Students, For Med Students.</p>
+  <details class="howto info">
+    <summary>Click here for more info</summary>
+    <p>Micrerdle is made by a team of med students. It's primarily a fun, Step 1–relevant study tool, although it can be used by students and providers in any field! The cases, hints and music were made by our team. Some of the art is original, and some is made with the help of generative AI.</p>
+    <p><b>However, we're interested in becoming fully human-made!</b> If you have an idea for a case, or like to make art, email us your 8-bit style artwork at <a href="mailto:casabcollab@gmail.com">casabcollab@gmail.com</a>. Any and all skill levels are welcome, and you'll receive credit for it as well!</p>
+    <p>Also, please <a href="mailto:casabcollab@gmail.com?subject=Micrerdle%20correction">email us</a> if we've gotten anything wrong.</p>
+  </details>
+  <button class="music-btn" id="musicBtn" type="button" aria-pressed="false">♪ Music off</button>
+  <div class="authors" aria-label="Made by the two of us">
+    <span class="au-h">Made by</span>
+    <figure><svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><rect x="0" y="0" width="1" height="1" fill="#66421e"/><rect x="1" y="0" width="1" height="1" fill="#7d562a"/><rect x="2" y="0" width="1" height="1" fill="#7d562a"/><rect x="3" y="0" width="1" height="1" fill="#66421e"/><rect x="4" y="0" width="1" height="1" fill="#7d562a"/><rect x="5" y="0" width="1" height="1" fill="#66421e"/><rect x="6" y="0" width="1" height="1" fill="#66421e"/><rect x="7" y="0" width="1" height="1" fill="#7d562a"/><rect x="8" y="0" width="1" height="1" fill="#7d562a"/><rect x="9" y="0" width="1" height="1" fill="#66421e"/><rect x="10" y="0" width="1" height="1" fill="#7d562a"/><rect x="11" y="0" width="1" height="1" fill="#7d562a"/><rect x="0" y="1" width="1" height="1" fill="#7d562a"/><rect x="1" y="1" width="1" height="1" fill="#66421e"/><rect x="2" y="1" width="1" height="1" fill="#66421e"/><rect x="3" y="1" width="1" height="1" fill="#66421e"/><rect x="4" y="1" width="1" height="1" fill="#66421e"/><rect x="5" y="1" width="1" height="1" fill="#66421e"/><rect x="6" y="1" width="1" height="1" fill="#7d562a"/><rect x="7" y="1" width="1" height="1" fill="#66421e"/><rect x="8" y="1" width="1" height="1" fill="#66421e"/><rect x="9" y="1" width="1" height="1" fill="#66421e"/><rect x="10" y="1" width="1" height="1" fill="#66421e"/><rect x="11" y="1" width="1" height="1" fill="#7d562a"/><rect x="0" y="2" width="1" height="1" fill="#66421e"/><rect x="1" y="2" width="1" height="1" fill="#7d562a"/><rect x="2" y="2" width="1" height="1" fill="#66421e"/><rect x="3" y="2" width="1" height="1" fill="#7d562a"/><rect x="4" y="2" width="1" height="1" fill="#66421e"/><rect x="5" y="2" width="1" height="1" fill="#66421e"/><rect x="6" y="2" width="1" height="1" fill="#66421e"/><rect x="7" y="2" width="1" height="1" fill="#7d562a"/><rect x="8" y="2" width="1" height="1" fill="#66421e"/><rect x="9" y="2" width="1" height="1" fill="#7d562a"/><rect x="10" y="2" width="1" height="1" fill="#66421e"/><rect x="11" y="2" width="1" height="1" fill="#664421"/><rect x="0" y="3" width="1" height="1" fill="#54381b"/><rect x="1" y="3" width="1" height="1" fill="#66421e"/><rect x="2" y="3" width="1" height="1" fill="#7d562a"/><rect x="3" y="3" width="1" height="1" fill="#66421e"/><rect x="4" y="3" width="1" height="1" fill="#54381b"/><rect x="5" y="3" width="1" height="1" fill="#7d562a"/><rect x="6" y="3" width="1" height="1" fill="#66421e"/><rect x="7" y="3" width="1" height="1" fill="#66421e"/><rect x="8" y="3" width="1" height="1" fill="#66421e"/><rect x="9" y="3" width="1" height="1" fill="#664421"/><rect x="10" y="3" width="1" height="1" fill="#664421"/><rect x="11" y="3" width="1" height="1" fill="#e5aa7a"/><rect x="0" y="4" width="1" height="1" fill="#e5aa7a"/><rect x="1" y="4" width="1" height="1" fill="#54381b"/><rect x="2" y="4" width="1" height="1" fill="#66421e"/><rect x="3" y="4" width="1" height="1" fill="#54381b"/><rect x="4" y="4" width="1" height="1" fill="#e5aa7a"/><rect x="5" y="4" width="1" height="1" fill="#54381b"/><rect x="6" y="4" width="1" height="1" fill="#54381b"/><rect x="7" y="4" width="1" height="1" fill="#664421"/><rect x="8" y="4" width="1" height="1" fill="#54381b"/><rect x="9" y="4" width="1" height="1" fill="#ffffff"/><rect x="10" y="4" width="1" height="1" fill="#e5aa7a"/><rect x="11" y="4" width="1" height="1" fill="#d99f73"/><rect x="0" y="5" width="1" height="1" fill="#d99f73"/><rect x="1" y="5" width="1" height="1" fill="#e5aa7a"/><rect x="2" y="5" width="1" height="1" fill="#ffffff"/><rect x="3" y="5" width="1" height="1" fill="#54381b"/><rect x="4" y="5" width="1" height="1" fill="#d99f73"/><rect x="5" y="5" width="1" height="1" fill="#e5aa7a"/><rect x="6" y="5" width="1" height="1" fill="#d99f73"/><rect x="7" y="5" width="1" height="1" fill="#e5aa7a"/><rect x="8" y="5" width="1" height="1" fill="#ffffff"/><rect x="9" y="5" width="1" height="1" fill="#ffffff"/><rect x="10" y="5" width="1" height="1" fill="#d99f73"/><rect x="11" y="5" width="1" height="1" fill="#e5aa7a"/><rect x="0" y="6" width="1" height="1" fill="#e5aa7a"/><rect x="1" y="6" width="1" height="1" fill="#d99f73"/><rect x="2" y="6" width="1" height="1" fill="#73991c"/><rect x="3" y="6" width="1" height="1" fill="#000000"/><rect x="4" y="6" width="1" height="1" fill="#e5aa7a"/><rect x="5" y="6" width="1" height="1" fill="#d99f73"/><rect x="6" y="6" width="1" height="1" fill="#e5aa7a"/><rect x="7" y="6" width="1" height="1" fill="#d99f73"/><rect x="8" y="6" width="1" height="1" fill="#000000"/><rect x="9" y="6" width="1" height="1" fill="#73991c"/><rect x="10" y="6" width="1" height="1" fill="#e5aa7a"/><rect x="11" y="6" width="1" height="1" fill="#d99f73"/><rect x="0" y="7" width="1" height="1" fill="#d99f73"/><rect x="1" y="7" width="1" height="1" fill="#e5aa7a"/><rect x="2" y="7" width="1" height="1" fill="#d99f73"/><rect x="3" y="7" width="1" height="1" fill="#e5aa7a"/><rect x="4" y="7" width="1" height="1" fill="#d99f73"/><rect x="5" y="7" width="1" height="1" fill="#e5aa7a"/><rect x="6" y="7" width="1" height="1" fill="#d99f73"/><rect x="7" y="7" width="1" height="1" fill="#e5aa7a"/><rect x="8" y="7" width="1" height="1" fill="#d99f73"/><rect x="9" y="7" width="1" height="1" fill="#e5aa7a"/><rect x="10" y="7" width="1" height="1" fill="#d99f73"/><rect x="11" y="7" width="1" height="1" fill="#e5aa7a"/><rect x="0" y="8" width="1" height="1" fill="#e5aa7a"/><rect x="1" y="8" width="1" height="1" fill="#d99f73"/><rect x="2" y="8" width="1" height="1" fill="#e5aa7a"/><rect x="3" y="8" width="1" height="1" fill="#d99f73"/><rect x="4" y="8" width="1" height="1" fill="#e5aa7a"/><rect x="5" y="8" width="1" height="1" fill="#d99f73"/><rect x="6" y="8" width="1" height="1" fill="#e5aa7a"/><rect x="7" y="8" width="1" height="1" fill="#d99f73"/><rect x="8" y="8" width="1" height="1" fill="#e5aa7a"/><rect x="9" y="8" width="1" height="1" fill="#d99f73"/><rect x="10" y="8" width="1" height="1" fill="#e5aa7a"/><rect x="11" y="8" width="1" height="1" fill="#d99f73"/><rect x="0" y="9" width="1" height="1" fill="#d99f73"/><rect x="1" y="9" width="1" height="1" fill="#e5aa7a"/><rect x="2" y="9" width="1" height="1" fill="#d99f73"/><rect x="3" y="9" width="1" height="1" fill="#e5aa7a"/><rect x="4" y="9" width="1" height="1" fill="#d99f73"/><rect x="5" y="9" width="1" height="1" fill="#e5aa7a"/><rect x="6" y="9" width="1" height="1" fill="#d99f73"/><rect x="7" y="9" width="1" height="1" fill="#e5aa7a"/><rect x="8" y="9" width="1" height="1" fill="#d99f73"/><rect x="9" y="9" width="1" height="1" fill="#e5aa7a"/><rect x="10" y="9" width="1" height="1" fill="#d99f73"/><rect x="11" y="9" width="1" height="1" fill="#e5aa7a"/><rect x="0" y="10" width="1" height="1" fill="#e5aa7a"/><rect x="1" y="10" width="1" height="1" fill="#d99f73"/><rect x="2" y="10" width="1" height="1" fill="#e5aa7a"/><rect x="3" y="10" width="1" height="1" fill="#d99f73"/><rect x="4" y="10" width="1" height="1" fill="#e5aa7a"/><rect x="5" y="10" width="1" height="1" fill="#966e4e"/><rect x="6" y="10" width="1" height="1" fill="#966e4e"/><rect x="7" y="10" width="1" height="1" fill="#d99f73"/><rect x="8" y="10" width="1" height="1" fill="#e5aa7a"/><rect x="9" y="10" width="1" height="1" fill="#d99f73"/><rect x="10" y="10" width="1" height="1" fill="#e5aa7a"/><rect x="11" y="10" width="1" height="1" fill="#d99f73"/><rect x="0" y="11" width="1" height="1" fill="#d99f73"/><rect x="1" y="11" width="1" height="1" fill="#e5aa7a"/><rect x="2" y="11" width="1" height="1" fill="#d99f73"/><rect x="3" y="11" width="1" height="1" fill="#e5aa7a"/><rect x="4" y="11" width="1" height="1" fill="#d99f73"/><rect x="5" y="11" width="1" height="1" fill="#e5aa7a"/><rect x="6" y="11" width="1" height="1" fill="#d99f73"/><rect x="7" y="11" width="1" height="1" fill="#e5aa7a"/><rect x="8" y="11" width="1" height="1" fill="#d99f73"/><rect x="9" y="11" width="1" height="1" fill="#e5aa7a"/><rect x="10" y="11" width="1" height="1" fill="#d99f73"/><rect x="11" y="11" width="1" height="1" fill="#e5aa7a"/></svg></figure>
+    <figure><svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><rect x="0" y="0" width="1" height="1" fill="#000000"/><rect x="1" y="0" width="1" height="1" fill="#000000"/><rect x="2" y="0" width="1" height="1" fill="#000000"/><rect x="3" y="0" width="1" height="1" fill="#000000"/><rect x="4" y="0" width="1" height="1" fill="#000000"/><rect x="5" y="0" width="1" height="1" fill="#000000"/><rect x="6" y="0" width="1" height="1" fill="#000000"/><rect x="7" y="0" width="1" height="1" fill="#000000"/><rect x="8" y="0" width="1" height="1" fill="#000000"/><rect x="9" y="0" width="1" height="1" fill="#000000"/><rect x="10" y="0" width="1" height="1" fill="#000000"/><rect x="11" y="0" width="1" height="1" fill="#000000"/><rect x="0" y="1" width="1" height="1" fill="#000000"/><rect x="1" y="1" width="1" height="1" fill="#000000"/><rect x="2" y="1" width="1" height="1" fill="#000000"/><rect x="3" y="1" width="1" height="1" fill="#000000"/><rect x="4" y="1" width="1" height="1" fill="#24497a"/><rect x="5" y="1" width="1" height="1" fill="#8fb0d8"/><rect x="6" y="1" width="1" height="1" fill="#e4ecf4"/><rect x="7" y="1" width="1" height="1" fill="#8fb0d8"/><rect x="8" y="1" width="1" height="1" fill="#24497a"/><rect x="9" y="1" width="1" height="1" fill="#000000"/><rect x="10" y="1" width="1" height="1" fill="#000000"/><rect x="11" y="1" width="1" height="1" fill="#000000"/><rect x="0" y="2" width="1" height="1" fill="#000000"/><rect x="1" y="2" width="1" height="1" fill="#000000"/><rect x="2" y="2" width="1" height="1" fill="#24497a"/><rect x="3" y="2" width="1" height="1" fill="#e4ecf4"/><rect x="4" y="2" width="1" height="1" fill="#3a6db0"/><rect x="5" y="2" width="1" height="1" fill="#8fb0d8"/><rect x="6" y="2" width="1" height="1" fill="#8fb0d8"/><rect x="7" y="2" width="1" height="1" fill="#3a6db0"/><rect x="8" y="2" width="1" height="1" fill="#e4ecf4"/><rect x="9" y="2" width="1" height="1" fill="#24497a"/><rect x="10" y="2" width="1" height="1" fill="#000000"/><rect x="11" y="2" width="1" height="1" fill="#000000"/><rect x="0" y="3" width="1" height="1" fill="#000000"/><rect x="1" y="3" width="1" height="1" fill="#24497a"/><rect x="2" y="3" width="1" height="1" fill="#3a6db0"/><rect x="3" y="3" width="1" height="1" fill="#3a6db0"/><rect x="4" y="3" width="1" height="1" fill="#e4ecf4"/><rect x="5" y="3" width="1" height="1" fill="#3a6db0"/><rect x="6" y="3" width="1" height="1" fill="#3a6db0"/><rect x="7" y="3" width="1" height="1" fill="#e4ecf4"/><rect x="8" y="3" width="1" height="1" fill="#3a6db0"/><rect x="9" y="3" width="1" height="1" fill="#3a6db0"/><rect x="10" y="3" width="1" height="1" fill="#24497a"/><rect x="11" y="3" width="1" height="1" fill="#000000"/><rect x="0" y="4" width="1" height="1" fill="#24497a"/><rect x="1" y="4" width="1" height="1" fill="#3a6db0"/><rect x="2" y="4" width="1" height="1" fill="#3a6db0"/><rect x="3" y="4" width="1" height="1" fill="#080b10"/><rect x="4" y="4" width="1" height="1" fill="#3a6db0"/><rect x="5" y="4" width="1" height="1" fill="#080b10"/><rect x="6" y="4" width="1" height="1" fill="#080b10"/><rect x="7" y="4" width="1" height="1" fill="#3a6db0"/><rect x="8" y="4" width="1" height="1" fill="#080b10"/><rect x="9" y="4" width="1" height="1" fill="#3a6db0"/><rect x="10" y="4" width="1" height="1" fill="#3a6db0"/><rect x="11" y="4" width="1" height="1" fill="#24497a"/><rect x="0" y="5" width="1" height="1" fill="#55652e"/><rect x="1" y="5" width="1" height="1" fill="#080b10"/><rect x="2" y="5" width="1" height="1" fill="#080b10"/><rect x="3" y="5" width="1" height="1" fill="#080b10"/><rect x="4" y="5" width="1" height="1" fill="#080b10"/><rect x="5" y="5" width="1" height="1" fill="#080b10"/><rect x="6" y="5" width="1" height="1" fill="#080b10"/><rect x="7" y="5" width="1" height="1" fill="#080b10"/><rect x="8" y="5" width="1" height="1" fill="#080b10"/><rect x="9" y="5" width="1" height="1" fill="#080b10"/><rect x="10" y="5" width="1" height="1" fill="#080b10"/><rect x="11" y="5" width="1" height="1" fill="#55652e"/><rect x="0" y="6" width="1" height="1" fill="#55652e"/><rect x="1" y="6" width="1" height="1" fill="#080b10"/><rect x="2" y="6" width="1" height="1" fill="#080b10"/><rect x="3" y="6" width="1" height="1" fill="#080b10"/><rect x="4" y="6" width="1" height="1" fill="#080b10"/><rect x="5" y="6" width="1" height="1" fill="#e0b060"/><rect x="6" y="6" width="1" height="1" fill="#080b10"/><rect x="7" y="6" width="1" height="1" fill="#080b10"/><rect x="8" y="6" width="1" height="1" fill="#080b10"/><rect x="9" y="6" width="1" height="1" fill="#080b10"/><rect x="10" y="6" width="1" height="1" fill="#080b10"/><rect x="11" y="6" width="1" height="1" fill="#55652e"/><rect x="0" y="7" width="1" height="1" fill="#000000"/><rect x="1" y="7" width="1" height="1" fill="#080b10"/><rect x="2" y="7" width="1" height="1" fill="#080b10"/><rect x="3" y="7" width="1" height="1" fill="#080b10"/><rect x="4" y="7" width="1" height="1" fill="#7a5f30"/><rect x="5" y="7" width="1" height="1" fill="#080b10"/><rect x="6" y="7" width="1" height="1" fill="#080b10"/><rect x="7" y="7" width="1" height="1" fill="#080b10"/><rect x="8" y="7" width="1" height="1" fill="#7a5f30"/><rect x="9" y="7" width="1" height="1" fill="#080b10"/><rect x="10" y="7" width="1" height="1" fill="#080b10"/><rect x="11" y="7" width="1" height="1" fill="#000000"/><rect x="0" y="8" width="1" height="1" fill="#000000"/><rect x="1" y="8" width="1" height="1" fill="#080b10"/><rect x="2" y="8" width="1" height="1" fill="#080b10"/><rect x="3" y="8" width="1" height="1" fill="#080b10"/><rect x="4" y="8" width="1" height="1" fill="#080b10"/><rect x="5" y="8" width="1" height="1" fill="#7a5f30"/><rect x="6" y="8" width="1" height="1" fill="#080b10"/><rect x="7" y="8" width="1" height="1" fill="#e0b060"/><rect x="8" y="8" width="1" height="1" fill="#080b10"/><rect x="9" y="8" width="1" height="1" fill="#080b10"/><rect x="10" y="8" width="1" height="1" fill="#7a5f30"/><rect x="11" y="8" width="1" height="1" fill="#000000"/><rect x="0" y="9" width="1" height="1" fill="#000000"/><rect x="1" y="9" width="1" height="1" fill="#080b10"/><rect x="2" y="9" width="1" height="1" fill="#080b10"/><rect x="3" y="9" width="1" height="1" fill="#7a5f30"/><rect x="4" y="9" width="1" height="1" fill="#080b10"/><rect x="5" y="9" width="1" height="1" fill="#080b10"/><rect x="6" y="9" width="1" height="1" fill="#080b10"/><rect x="7" y="9" width="1" height="1" fill="#7a5f30"/><rect x="8" y="9" width="1" height="1" fill="#080b10"/><rect x="9" y="9" width="1" height="1" fill="#080b10"/><rect x="10" y="9" width="1" height="1" fill="#080b10"/><rect x="11" y="9" width="1" height="1" fill="#000000"/><rect x="0" y="10" width="1" height="1" fill="#000000"/><rect x="1" y="10" width="1" height="1" fill="#000000"/><rect x="2" y="10" width="1" height="1" fill="#080b10"/><rect x="3" y="10" width="1" height="1" fill="#080b10"/><rect x="4" y="10" width="1" height="1" fill="#080b10"/><rect x="5" y="10" width="1" height="1" fill="#080b10"/><rect x="6" y="10" width="1" height="1" fill="#7a5f30"/><rect x="7" y="10" width="1" height="1" fill="#080b10"/><rect x="8" y="10" width="1" height="1" fill="#080b10"/><rect x="9" y="10" width="1" height="1" fill="#080b10"/><rect x="10" y="10" width="1" height="1" fill="#000000"/><rect x="11" y="10" width="1" height="1" fill="#000000"/><rect x="0" y="11" width="1" height="1" fill="#000000"/><rect x="1" y="11" width="1" height="1" fill="#000000"/><rect x="2" y="11" width="1" height="1" fill="#000000"/><rect x="3" y="11" width="1" height="1" fill="#080b10"/><rect x="4" y="11" width="1" height="1" fill="#080b10"/><rect x="5" y="11" width="1" height="1" fill="#080b10"/><rect x="6" y="11" width="1" height="1" fill="#080b10"/><rect x="7" y="11" width="1" height="1" fill="#080b10"/><rect x="8" y="11" width="1" height="1" fill="#080b10"/><rect x="9" y="11" width="1" height="1" fill="#000000"/><rect x="10" y="11" width="1" height="1" fill="#000000"/><rect x="11" y="11" width="1" height="1" fill="#000000"/></svg></figure>
+    <figure><svg viewBox="0 0 21 11" shape-rendering="crispEdges" aria-hidden="true" style="width:42px;height:22px"><rect x="19" y="0" width="1" height="1" fill="#ffc107"/><rect x="5" y="1" width="1" height="1" fill="#ffc107"/><rect x="6" y="1" width="1" height="1" fill="#ffc107"/><rect x="7" y="1" width="1" height="1" fill="#ffc107"/><rect x="8" y="1" width="1" height="1" fill="#ffc107"/><rect x="9" y="1" width="1" height="1" fill="#ffc107"/><rect x="18" y="1" width="1" height="1" fill="#ffc107"/><rect x="19" y="1" width="1" height="1" fill="#ffc107"/><rect x="3" y="2" width="1" height="1" fill="#ffc107"/><rect x="4" y="2" width="1" height="1" fill="#ffc107"/><rect x="5" y="2" width="1" height="1" fill="#ffc107"/><rect x="6" y="2" width="1" height="1" fill="#ffc107"/><rect x="7" y="2" width="1" height="1" fill="#ffc107"/><rect x="8" y="2" width="1" height="1" fill="#ffc107"/><rect x="9" y="2" width="1" height="1" fill="#ffc107"/><rect x="10" y="2" width="1" height="1" fill="#ffc107"/><rect x="11" y="2" width="1" height="1" fill="#ffc107"/><rect x="18" y="2" width="1" height="1" fill="#ffc107"/><rect x="19" y="2" width="1" height="1" fill="#ffc107"/><rect x="2" y="3" width="1" height="1" fill="#ffc107"/><rect x="3" y="3" width="1" height="1" fill="#ffc107"/><rect x="4" y="3" width="1" height="1" fill="#ffc107"/><rect x="5" y="3" width="1" height="1" fill="#ffc107"/><rect x="6" y="3" width="1" height="1" fill="#ffc107"/><rect x="7" y="3" width="1" height="1" fill="#ffc107"/><rect x="8" y="3" width="1" height="1" fill="#ffc107"/><rect x="9" y="3" width="1" height="1" fill="#ffc107"/><rect x="10" y="3" width="1" height="1" fill="#ffc107"/><rect x="11" y="3" width="1" height="1" fill="#ffc107"/><rect x="12" y="3" width="1" height="1" fill="#ffc107"/><rect x="17" y="3" width="1" height="1" fill="#ffc107"/><rect x="18" y="3" width="1" height="1" fill="#ffc107"/><rect x="19" y="3" width="1" height="1" fill="#ffc107"/><rect x="1" y="4" width="1" height="1" fill="#ffc107"/><rect x="2" y="4" width="1" height="1" fill="#ffc107"/><rect x="3" y="4" width="1" height="1" fill="#ffc107"/><rect x="4" y="4" width="1" height="1" fill="#ffc107"/><rect x="5" y="4" width="1" height="1" fill="#ffc107"/><rect x="6" y="4" width="1" height="1" fill="#ffc107"/><rect x="7" y="4" width="1" height="1" fill="#ffc107"/><rect x="8" y="4" width="1" height="1" fill="#ffc107"/><rect x="9" y="4" width="1" height="1" fill="#ffc107"/><rect x="10" y="4" width="1" height="1" fill="#ffc107"/><rect x="11" y="4" width="1" height="1" fill="#ffc107"/><rect x="12" y="4" width="1" height="1" fill="#ffc107"/><rect x="13" y="4" width="1" height="1" fill="#ffc107"/><rect x="16" y="4" width="1" height="1" fill="#ffc107"/><rect x="17" y="4" width="1" height="1" fill="#ffc107"/><rect x="18" y="4" width="1" height="1" fill="#ffc107"/><rect x="19" y="4" width="1" height="1" fill="#ffc107"/><rect x="0" y="5" width="1" height="1" fill="#ffc107"/><rect x="1" y="5" width="1" height="1" fill="#ffc107"/><rect x="2" y="5" width="1" height="1" fill="#ffc107"/><rect x="3" y="5" width="1" height="1" fill="#ffc107"/><rect x="4" y="5" width="1" height="1" fill="#3f51b5"/><rect x="5" y="5" width="1" height="1" fill="#ffc107"/><rect x="6" y="5" width="1" height="1" fill="#ffc107"/><rect x="7" y="5" width="1" height="1" fill="#ffc107"/><rect x="8" y="5" width="1" height="1" fill="#ffc107"/><rect x="9" y="5" width="1" height="1" fill="#ffc107"/><rect x="10" y="5" width="1" height="1" fill="#ffc107"/><rect x="11" y="5" width="1" height="1" fill="#ffc107"/><rect x="12" y="5" width="1" height="1" fill="#ffc107"/><rect x="13" y="5" width="1" height="1" fill="#ffc107"/><rect x="14" y="5" width="1" height="1" fill="#ffc107"/><rect x="15" y="5" width="1" height="1" fill="#ffc107"/><rect x="16" y="5" width="1" height="1" fill="#ffc107"/><rect x="17" y="5" width="1" height="1" fill="#ffc107"/><rect x="18" y="5" width="1" height="1" fill="#ffc107"/><rect x="19" y="5" width="1" height="1" fill="#ffc107"/><rect x="1" y="6" width="1" height="1" fill="#ffc107"/><rect x="2" y="6" width="1" height="1" fill="#ffc107"/><rect x="3" y="6" width="1" height="1" fill="#ffc107"/><rect x="4" y="6" width="1" height="1" fill="#ffc107"/><rect x="5" y="6" width="1" height="1" fill="#ffc107"/><rect x="6" y="6" width="1" height="1" fill="#ffc107"/><rect x="7" y="6" width="1" height="1" fill="#ffc107"/><rect x="8" y="6" width="1" height="1" fill="#ffc107"/><rect x="9" y="6" width="1" height="1" fill="#ffc107"/><rect x="10" y="6" width="1" height="1" fill="#ffc107"/><rect x="11" y="6" width="1" height="1" fill="#ffc107"/><rect x="12" y="6" width="1" height="1" fill="#ffc107"/><rect x="13" y="6" width="1" height="1" fill="#ffc107"/><rect x="14" y="6" width="1" height="1" fill="#ffc107"/><rect x="15" y="6" width="1" height="1" fill="#ffc107"/><rect x="16" y="6" width="1" height="1" fill="#ffc107"/><rect x="17" y="6" width="1" height="1" fill="#ffc107"/><rect x="18" y="6" width="1" height="1" fill="#ffc107"/><rect x="19" y="6" width="1" height="1" fill="#ffc107"/><rect x="1" y="7" width="1" height="1" fill="#ffc107"/><rect x="2" y="7" width="1" height="1" fill="#ffc107"/><rect x="3" y="7" width="1" height="1" fill="#ffc107"/><rect x="4" y="7" width="1" height="1" fill="#ffc107"/><rect x="5" y="7" width="1" height="1" fill="#ffc107"/><rect x="6" y="7" width="1" height="1" fill="#ffc107"/><rect x="7" y="7" width="1" height="1" fill="#ffc107"/><rect x="8" y="7" width="1" height="1" fill="#ffc107"/><rect x="9" y="7" width="1" height="1" fill="#ffc107"/><rect x="10" y="7" width="1" height="1" fill="#ffc107"/><rect x="11" y="7" width="1" height="1" fill="#ffc107"/><rect x="12" y="7" width="1" height="1" fill="#ffc107"/><rect x="13" y="7" width="1" height="1" fill="#ffc107"/><rect x="16" y="7" width="1" height="1" fill="#ffc107"/><rect x="17" y="7" width="1" height="1" fill="#ffc107"/><rect x="18" y="7" width="1" height="1" fill="#ffc107"/><rect x="19" y="7" width="1" height="1" fill="#ffc107"/><rect x="2" y="8" width="1" height="1" fill="#ffc107"/><rect x="3" y="8" width="1" height="1" fill="#ffc107"/><rect x="4" y="8" width="1" height="1" fill="#ffc107"/><rect x="5" y="8" width="1" height="1" fill="#ffc107"/><rect x="6" y="8" width="1" height="1" fill="#000000"/><rect x="7" y="8" width="1" height="1" fill="#ffc107"/><rect x="8" y="8" width="1" height="1" fill="#ffc107"/><rect x="9" y="8" width="1" height="1" fill="#ffc107"/><rect x="10" y="8" width="1" height="1" fill="#ffc107"/><rect x="11" y="8" width="1" height="1" fill="#ffc107"/><rect x="12" y="8" width="1" height="1" fill="#ffc107"/><rect x="18" y="8" width="1" height="1" fill="#ffc107"/><rect x="19" y="8" width="1" height="1" fill="#ffc107"/><rect x="3" y="9" width="1" height="1" fill="#000000"/><rect x="4" y="9" width="1" height="1" fill="#000000"/><rect x="5" y="9" width="1" height="1" fill="#000000"/><rect x="6" y="9" width="1" height="1" fill="#ffc107"/><rect x="7" y="9" width="1" height="1" fill="#ffc107"/><rect x="8" y="9" width="1" height="1" fill="#ffc107"/><rect x="9" y="9" width="1" height="1" fill="#ffc107"/><rect x="10" y="9" width="1" height="1" fill="#ffc107"/><rect x="11" y="9" width="1" height="1" fill="#ffc107"/><rect x="19" y="9" width="1" height="1" fill="#ffc107"/><rect x="20" y="9" width="1" height="1" fill="#ffc107"/><rect x="4" y="10" width="1" height="1" fill="#ffc107"/><rect x="5" y="10" width="1" height="1" fill="#ffc107"/><rect x="6" y="10" width="1" height="1" fill="#ffc107"/><rect x="7" y="10" width="1" height="1" fill="#ffc107"/><rect x="8" y="10" width="1" height="1" fill="#ffc107"/><rect x="9" y="10" width="1" height="1" fill="#ffc107"/><rect x="10" y="10" width="1" height="1" fill="#ffc107"/><rect x="20" y="10" width="1" height="1" fill="#ffc107"/></svg></figure>
+    <figure><svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><title>Claude</title><rect x="4" y="0" width="1" height="1" fill="#B85C3E"/><rect x="5" y="0" width="1" height="1" fill="#B85C3E"/><rect x="6" y="0" width="1" height="1" fill="#B85C3E"/><rect x="3" y="1" width="1" height="1" fill="#B85C3E"/><rect x="4" y="1" width="1" height="1" fill="#D97757"/><rect x="5" y="1" width="1" height="1" fill="#F2B49A"/><rect x="6" y="1" width="1" height="1" fill="#D97757"/><rect x="7" y="1" width="1" height="1" fill="#B85C3E"/><rect x="2" y="2" width="1" height="1" fill="#B85C3E"/><rect x="3" y="2" width="1" height="1" fill="#D97757"/><rect x="4" y="2" width="1" height="1" fill="#F2B49A"/><rect x="5" y="2" width="1" height="1" fill="#D97757"/><rect x="6" y="2" width="1" height="1" fill="#F2B49A"/><rect x="7" y="2" width="1" height="1" fill="#D97757"/><rect x="8" y="2" width="1" height="1" fill="#B85C3E"/><rect x="2" y="3" width="1" height="1" fill="#B85C3E"/><rect x="3" y="3" width="1" height="1" fill="#F2B49A"/><rect x="4" y="3" width="1" height="1" fill="#D97757"/><rect x="5" y="3" width="1" height="1" fill="#D97757"/><rect x="6" y="3" width="1" height="1" fill="#D97757"/><rect x="7" y="3" width="1" height="1" fill="#F2B49A"/><rect x="8" y="3" width="1" height="1" fill="#B85C3E"/><rect x="3" y="4" width="1" height="1" fill="#B85C3E"/><rect x="4" y="4" width="1" height="1" fill="#D97757"/><rect x="5" y="4" width="1" height="1" fill="#F2B49A"/><rect x="6" y="4" width="1" height="1" fill="#D97757"/><rect x="7" y="4" width="1" height="1" fill="#B85C3E"/><rect x="4" y="5" width="1" height="1" fill="#B85C3E"/><rect x="5" y="5" width="1" height="1" fill="#B85C3E"/><rect x="6" y="5" width="1" height="1" fill="#B85C3E"/><rect x="4" y="6" width="1" height="1" fill="#8A9096"/><rect x="5" y="6" width="1" height="1" fill="#8A9096"/><rect x="6" y="6" width="1" height="1" fill="#8A9096"/><rect x="4" y="7" width="1" height="1" fill="#D97757"/><rect x="5" y="7" width="1" height="1" fill="#B85C3E"/><rect x="6" y="7" width="1" height="1" fill="#D97757"/><rect x="4" y="8" width="1" height="1" fill="#B85C3E"/><rect x="5" y="8" width="1" height="1" fill="#D97757"/><rect x="6" y="8" width="1" height="1" fill="#B85C3E"/><rect x="3" y="9" width="1" height="1" fill="#8A9096"/><rect x="4" y="9" width="1" height="1" fill="#8A9096"/><rect x="5" y="9" width="1" height="1" fill="#8A9096"/><rect x="6" y="9" width="1" height="1" fill="#8A9096"/><rect x="7" y="9" width="1" height="1" fill="#8A9096"/><rect x="2" y="10" width="1" height="1" fill="#8A9096"/><rect x="4" y="10" width="1" height="1" fill="#8A9096"/><rect x="6" y="10" width="1" height="1" fill="#8A9096"/><rect x="8" y="10" width="1" height="1" fill="#8A9096"/><rect x="1" y="11" width="1" height="1" fill="#8A9096"/><rect x="4" y="11" width="1" height="1" fill="#8A9096"/><rect x="6" y="11" width="1" height="1" fill="#8A9096"/><rect x="9" y="11" width="1" height="1" fill="#8A9096"/></svg></figure>
+  </div>
+</section>
+
+<section class="wrap archive" id="archiveScreen" hidden>
+  <div class="arch-head">
+    <button class="sound-btn" id="archiveBack" type="button">← Back</button>
+    <h2>Archive</h2>
+  </div>
+  <p class="arch-sub">Every case so far. Your results are saved on this device.</p>
+  <ol class="arch-list" id="archiveList"></ol>
+</section>
+
+<div id="scope" hidden>
+  <canvas id="scopeCanvas" aria-hidden="true"></canvas>
+  <p id="scopeCap" aria-live="polite"></p>
+  <p class="scope-skip">Tap to skip</p>
+</div>
+
+<div class="wrap" id="game" hidden>
+  <div class="topbar">
+    <header>
+      <button class="home-link" id="homeLogo" type="button" aria-label="Back to title screen"><canvas class="logo-canvas" id="miniLogo" width="148" height="22"></canvas></button>
+      <div class="head-right">
+        <div class="meta" id="caseMeta">Case 001</div>
+        <button class="sound-btn" id="soundBtn" type="button" aria-pressed="true">Sound on</button>
+        <button class="sound-btn" id="musicBtnGame" type="button" aria-pressed="false">♪ Music off</button>
+        <button class="sound-btn" id="homeBtn" type="button">Home</button>
+      </div>
+    </header>
+    <div class="meter" id="meter" aria-hidden="true">
+      <div class="meter-cells" id="meterCells"></div>
+      <div class="meter-label" id="meterLabel">Hint 1 of 6</div>
+    </div>
+  </div>
+
+  <ol class="hints" id="hints"></ol>
+
+  <section class="play" id="play">
+    <div class="field">
+      <div class="row">
+        <input id="guess" type="text" autocomplete="off" spellcheck="false" placeholder="Type an organism…" aria-label="Your guess" role="combobox" aria-expanded="false" aria-controls="suggest">
+        <button class="btn-main" id="guessBtn" type="button">Guess</button>
+        <button class="btn-ghost" id="skipBtn" type="button">Skip</button>
+      </div>
+      <ul class="suggest" id="suggest" role="listbox" hidden></ul>
+    </div>
+    <p class="msg" id="msg" aria-live="polite"></p>
+    <div class="legend">
+      <span><i style="background:var(--hit)"></i>Correct</span>
+      <span><i style="background:var(--near)"></i>Same type</span>
+      <span><i style="background:var(--miss)"></i>Different type</span>
+    </div>
+  </section>
+
+  <ol class="guesses" id="guesses"></ol>
+
+  <section class="reveal" id="reveal" hidden></section>
+
+  <footer>
+    <span>Made by students. For education only.</span>
+    <span class="foot-btns"><button class="btn-ghost" id="archiveBtnGame" type="button">Archive</button><button class="btn-ghost" id="resetBtn" type="button">Replay case</button></span>
+  </footer>
+</div>
+
+<!-- The answer list. Edit organisms.js to add, rename or re-type an organism. -->
+<script src="organisms.js"></script>
+<!-- Cases: one file per case, in order. To add a case, make a new file in cases/ and add a line here. -->
+<script>window.MICRERDLE_CASES = [];</script>
+<script src="cases/001-francisella-tularensis.js"></script>
+<script src="cases/002-blastomyces-dermatitidis.js"></script>
+<script src="cases/003-plasmodium-vivax.js"></script>
+<script src="cases/004-ehec.js"></script>
+
+<script>
+// =====================================================================
+// TITLE SCREEN: logo + phage, blood agar plate, swimmers
+// =====================================================================
+(() => {
+  const $ = id => document.getElementById(id);
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const tok = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const titleEl = $("titleScreen");
+
+  function makePainter(canvas) {
+    const g = canvas.getContext("2d"), W = canvas.width, H = canvas.height;
+    const px = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= W || y >= H) return; g.fillStyle = c; g.fillRect(x, y, 1, 1); };
+    const oval = (cx, cy, rx, ry, c) => { for (let y = -ry; y <= ry; y++) for (let x = -rx; x <= rx; x++) if ((x * x) / (rx * rx) + (y * y) / (ry * ry) <= 1.02) px(cx + x, cy + y, c); };
+    return { g, W, H, px, oval, clear: () => g.clearRect(0, 0, W, H) };
+  }
+  const logoCv = $("logoCanvas"), sceneCv = $("sceneCanvas");
+  const LP = makePainter(logoCv), SP = makePainter(sceneCv);
+
+  // Seeded random so the culture looks the same on every load
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+
+
+  // ---------- LOGO ----------
+  const GLYPHS = {
+    M: ["##...##", "###.###", "#######", "##.#.##", "##...##", "##...##", "##...##", "##...##", "##...##"],
+    I: ["######", "..##..", "..##..", "..##..", "..##..", "..##..", "..##..", "..##..", "######"],
+    C: [".####.", "##..##", "##....", "##....", "##....", "##....", "##....", "##..##", ".####."],
+    E: ["######", "##....", "##....", "##....", "#####.", "##....", "##....", "##....", "######"],
+    R: ["#####.", "##..##", "##..##", "##..##", "#####.", "####..", "##.##.", "##..##", "##..##"],
+    D: ["####..", "##.##.", "##..##", "##..##", "##..##", "##..##", "##..##", "##.##.", "####.."],
+    L: ["##....", "##....", "##....", "##....", "##....", "##....", "##....", "##....", "######"]
+  };
+  const LS = 2;
+  const WORD = "MICRERDLE", LEFT = 22, LETTER_TOP = 19;
+  const letterX = []; { let x = LEFT; for (const ch of WORD) { letterX.push(x); x += (GLYPHS[ch][0].length + 2) * LS; } }
+  const M_X = letterX[0], E_IDX = 4, E_X = letterX[E_IDX];
+  const CLING = { x: M_X - 1, y: LETTER_TOP + 9 };
+  const TOP_Y = LETTER_TOP - 1;
+
+  const PH = { O: "#137A85", F: "#2FB8C4", L: "#8FE3E9", G: "#8A9096", T: "#3A3F45" };
+  const HEAD = ["...O...", ".OOLOO.", "OFLFLFO", "OLFFFLO", "OFLFLFO", "OLFFFLO", ".OOLOO.", "...O..."];
+  const FIBERS = [
+    ["..G.....G..", ".G..G.G..G.", "G...G.G...G"],
+    ["..G.....G..", "..G.G.G.G..", ".G..G.G..G."]
+  ];
+  function phageSprite(legs, tail, empty) {
+    const out = [];
+    const row = (dy, pat, map) => [...pat].forEach((c, i) => { if (c !== "." && map[c]) out.push([i - (pat.length >> 1), dy, map[c]]); });
+    FIBERS[legs].forEach((r, i) => row(i - 2, r, { G: PH.G }));
+    row(-3, ".GGGGG.", { G: PH.G });
+    for (let i = 1; i <= tail; i++) row(-3 - i, "..SSS..", { S: i % 2 ? PH.F : PH.O });
+    row(-4 - tail, ".GGGGG.", { G: PH.G });
+    row(-5 - tail, "...G...", { G: PH.G });
+    HEAD.forEach((r, i) => row(-13 - tail + i, r, empty ? { O: PH.O } : { O: PH.O, F: PH.F, L: PH.L }));
+    if (tail < 4) { out.push([0, 1, PH.T]); out.push([0, 2, PH.T]); }
+    return out;
+  }
+
+  const phage = { on: true, mode: "cling", x: CLING.x, y: CLING.y, legs: 0, tail: 4, empty: false };
+  const eState = { show: true, dna: 0 };
+
+  function drawPhage(P, ph) {
+    if (!ph.on) return;
+    phageSprite(ph.legs, ph.tail, ph.empty).forEach(([dx, dy, c]) => {
+      if (ph.mode === "cling") P.px(ph.x + dy, ph.y - dx, c);
+      else P.px(ph.x + dx, ph.y + dy, c);
+    });
+  }
+
+  function drawLogo(P, withPhage) {
+    const ink = tok("--logo"), shadow = tok("--logo-shadow"), flash = "#FFFFFF";
+    const block = (x, y, c) => { for (let a = 0; a < LS; a++) for (let b = 0; b < LS; b++) P.px(x + a, y + b, c); };
+    P.clear();
+    WORD.split("").forEach((ch, k) => {
+      if (withPhage && k === E_IDX && !eState.show) return;
+      const rows = GLYPHS[ch], x0 = letterX[k];
+      rows.forEach((row, ry) => [...row].forEach((c, rx) => { if (c === "#") block(x0 + rx * LS + LS, LETTER_TOP + ry * LS + LS, shadow); }));
+      rows.forEach((row, ry) => [...row].forEach((c, rx) => {
+        if (c !== "#") return;
+        const lit = withPhage && k === E_IDX && rx < 2 && eState.dna > 0 && ry < eState.dna;
+        block(x0 + rx * LS, LETTER_TOP + ry * LS, lit ? flash : ink);
+      }));
+    });
+    if (withPhage) drawPhage(P, phage);
+  }
+
+  // Small logo for the game screen's top bar: the letters only, cropped from a full-size drawing
+  function drawMiniLogo() {
+    const mini = $("miniLogo"); if (!mini) return;
+    const off = document.createElement("canvas"); off.width = 168; off.height = 40;
+    drawLogo(makePainter(off), false);
+    const g = mini.getContext("2d"); g.clearRect(0, 0, mini.width, mini.height);
+    g.drawImage(off, LEFT - 2, LETTER_TOP - 1, mini.width, mini.height, 0, 0, mini.width, mini.height);
+  }
+
+  // ---------- SCENE: blood agar plate with a quadrant streak of Staph aureus ----------
+  const D = { cx: 96, cy: 48, R: 44 };
+  const COL = {
+    agar: "#C4212C", agarDeep: "#A8182A", agarLight: "#D9363C", beta: "#D53A40",
+    col: "#F3E6D8", colShade: "#D6C0AE", colHi: "#FFFFFF", confluent: "#EADBCF", confluentEdge: "#CDB6A6",
+    rim: "#FFF4FB", rimInner: "#E9C9DE",
+    pro: "#6A0F4A", proLight: "#F7D3EC", proDark: "#2E0821",
+    giardia: "#8E2C7A"
+  };
+  const dist = (x, y) => Math.hypot(x - D.cx, y - D.cy);
+  const inDish = (x, y) => dist(x, y) <= D.R - 4;
+
+  const sweeps = [];
+  for (let k = 0; k < 5; k++) {
+    const y = D.cy + 14 + k * 5.5;
+    sweeps.push({ x0: D.cx - 6 + (k % 2) * 4 + k, x1: D.cx + 40 - k * 2, y0: y, y1: y - 7 + k, w: 1, bow: 1.5 + rnd() * 1.5 });
+  }
+  const beadLines = [];
+  for (let k = 0; k < 4; k++) beadLines.push({ x0: D.cx - 18, y0: D.cy + 1 + k * 3.2, x1: D.cx + 38, y1: D.cy - 6 + k * 3.2 });
+  for (let k = 0; k < 5; k++) beadLines.push({ x0: D.cx - 34 + k * 5.5, y0: D.cy + 30 - k * 2, x1: D.cx - 31 + k * 6.5, y1: D.cy - 30 + k * 3 });
+  const beads = [];
+  beadLines.forEach(l => {
+    const n = Math.round(Math.hypot(l.x1 - l.x0, l.y1 - l.y0) / 1.6);
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const x = l.x0 + (l.x1 - l.x0) * t + (rnd() - 0.5) * 1.6, y = l.y0 + (l.y1 - l.y0) * t + (rnd() - 0.5) * 1.6;
+      if (inDish(x, y) && rnd() < 0.85) beads.push({ x, y, ph: rnd() * 6.28 });
+    }
+  });
+  const isolated = [];
+  const centers = [[22, -32], [12, -28], [30, -24], [6, -16], [18, -14], [32, -10], [-2, -26], [26, -36], [8, -38], [36, -18], [-6, -12], [14, -6], [2, -34], [24, -20], [10, -22], [-4, -20], [28, -4], [20, -8], [34, -26]];
+  centers.forEach(([cx, cy]) => {
+    const n = 1 + Math.floor(rnd() * 3.5);
+    for (let i = 0; i < n; i++) {
+      const x = D.cx + cx + (i ? (rnd() - 0.5) * 6 : 0), y = D.cy + cy + (i ? (rnd() - 0.5) * 6 : 0);
+      if (dist(x, y) < D.R - 6 && !isolated.some(c => Math.hypot(c.x - x, c.y - y) < 3.2)) isolated.push({ x, y, r: rnd() < 0.75 ? 1 : 2, ph: rnd() * 6.28, sp: 0.4 + rnd() * 0.5 });
+    }
+  });
+  const agarDots = []; for (let i = 0; i < 60; i++) { const a = rnd() * 6.28, r = Math.sqrt(rnd()) * (D.R - 5); agarDots.push([Math.round(D.cx + Math.cos(a) * r), Math.round(D.cy + Math.sin(a) * r)]); }
+
+  let scatter = 0;
+  sceneCv.addEventListener("pointerdown", () => { scatter = 1; });
+
+  const swimmer = { on: false, kind: "pro", x: 0, y: 0, dir: 1, base: 20, t0: 0 };
+
+  function drawDish(P, t) {
+    const { px } = P;
+    const disc = (cx, cy, r, c) => { for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r + r * 0.6) px(cx + x, cy + y, c); };
+    disc(D.cx + 3, D.cy + 3, D.R + 1, tok("--dish-shadow"));
+    disc(D.cx, D.cy, D.R, COL.rim);
+    disc(D.cx, D.cy, D.R - 1, COL.rimInner);
+    disc(D.cx, D.cy, D.R - 3, COL.agarDeep);
+    disc(D.cx - 1, D.cy - 1, D.R - 5, COL.agar);
+    agarDots.forEach(([x, y]) => px(x, y, COL.agarDeep));
+    for (let a = 0; a < 6.283; a += 0.01) px(D.cx + 1 + Math.cos(a) * (D.R - 2), D.cy - 1 + Math.sin(a) * (D.R - 2), COL.rim);
+  }
+
+  function colony(P, x, y, r, halo) {
+    const { px } = P;
+    x = Math.round(x); y = Math.round(y);
+    if (r === 1) {
+      if (halo) { for (let dy = -1; dy <= 2; dy++) for (let dx = -1; dx <= 2; dx++) if (!((dx === -1 || dx === 2) && (dy === -1 || dy === 2))) px(x + dx, y + dy, COL.beta); return; }
+      px(x, y, COL.colHi); px(x + 1, y, COL.col); px(x, y + 1, COL.col); px(x + 1, y + 1, COL.colShade); return;
+    }
+    if (halo) { for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (dx * dx + dy * dy <= 10) px(x + dx, y + dy, COL.beta); return; }
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (dx * dx + dy * dy <= 5) px(x + dx, y + dy, (dx + dy > 1) ? COL.colShade : COL.col);
+    px(x - 1, y - 1, COL.colHi);
+  }
+
+  function drawStaph(P, t) {
+    const { px } = P, s = scatter;
+    const wig = (ph, sp) => Math.round(Math.sin(t * sp + ph) * (0.55 + s * 1.4));
+    isolated.forEach(c => colony(P, c.x + wig(c.ph, c.sp), c.y + wig(c.ph + 2, c.sp * 0.8), c.r, true));
+    sweeps.forEach((sw, k) => {
+      const n = Math.round(sw.x1 - sw.x0);
+      for (let i = 0; i <= n; i++) {
+        const x = sw.x0 + i, y = sw.y0 + (sw.y1 - sw.y0) * (i / n) - Math.sin(Math.PI * i / n) * sw.bow;
+        const edge = Math.round(Math.sin(i * 0.35 + k * 2 + t * 0.6) * 0.6);
+        for (let dy = -sw.w + edge; dy <= sw.w; dy++) {
+          if (!inDish(x, y + dy)) continue;
+          px(x, y + dy, dy === sw.w ? COL.confluentEdge : COL.confluent);
+        }
+      }
+    });
+    beads.forEach((b, i) => { const x = b.x + wig(b.ph, 0.5), y = b.y + wig(b.ph + 1, 0.4); px(x, y, COL.col); if (i % 3 === 0) px(x, y + 1, COL.colShade); });
+    isolated.forEach(c => colony(P, c.x + wig(c.ph, c.sp), c.y + wig(c.ph + 2, c.sp * 0.8), c.r, false));
+    for (let a = 3.5; a < 4.4; a += 0.03) { px(D.cx + Math.cos(a) * (D.R - 6), D.cy + Math.sin(a) * (D.R - 6), COL.colHi); }
+    for (let a = 3.7; a < 4.1; a += 0.04) { px(D.cx + Math.cos(a) * (D.R - 9), D.cy + Math.sin(a) * (D.R - 9), COL.rim); }
+  }
+
+  function drawPromastigote(P, sw, t) {
+    const { px } = P, d = sw.dir, N = 18;
+    const fill = "#B04A92";
+    for (let i = 0; i < N; i++) {
+      const h = Math.round(2.45 * Math.pow(Math.sin(Math.PI * (i + 0.5) / N), 0.7));
+      const x = sw.x + i * d, y = sw.y;
+      for (let k = -h; k <= h; k++) px(x, y + k, (k === -h || k === h) ? COL.pro : fill);
+      if (h === 0) px(x, y, COL.pro);
+      if (i === 7 || i === 8) { px(x, y, COL.proLight); px(x, y - 1, COL.proLight); }
+      if (i === 14) px(x, y, COL.proDark);
+    }
+    for (let j = 1; j <= 13; j++) {
+      const y = sw.y + Math.round(Math.sin(t * 15 - j * 0.8) * 1.6 * Math.min(1, j / 4));
+      px(sw.x + (N - 1 + j) * d, y, COL.pro);
+    }
+  }
+
+  function drawGiardia(P, sw, t) {
+    const { px } = P, d = sw.dir, L = 15;
+    const fill = "#C873AE", edge = COL.giardia;
+    for (let c = 0; c < L; c++) {
+      const h = c < 6 ? Math.round(5 * Math.sqrt(Math.max(0, 1 - ((c - 5.5) / 6) ** 2))) : Math.round(5 * (1 - (c - 5) / 11));
+      const x = sw.x - c * d;
+      for (let k = -h; k <= h; k++) px(x, sw.y + k, (k === -h || k === h || c === 0) ? edge : fill);
+    }
+    for (let k = -3; k <= 3; k++) px(sw.x - 1 * d, sw.y + k, "#E3A8D2");
+    [[3, -2], [4, -2], [3, -3], [4, -3], [3, 2], [4, 2], [3, 3], [4, 3]].forEach(([c, k]) => px(sw.x - c * d, sw.y + k, COL.proLight));
+    px(sw.x - 3 * d, sw.y - 2, COL.proDark); px(sw.x - 3 * d, sw.y + 2, COL.proDark);
+    for (let k = -1; k <= 1; k++) px(sw.x - 7 * d, sw.y + k, COL.proDark);
+    [-3, -1, 1, 3].forEach((k, n) => {
+      for (let j = 1; j <= 8; j++) px(sw.x - (L - 2 + j) * d, sw.y + Math.round(k * (0.6 + j / 10)) + Math.round(Math.sin(t * 13 - j * 0.9 + n) * 0.8), edge);
+    });
+  }
+
+  function drawScene(P, t) {
+    P.clear();
+    drawDish(P, t);
+    drawStaph(P, t);
+    if (swimmer.on) (swimmer.kind === "giardia" ? drawGiardia : drawPromastigote)(P, swimmer, t);
+  }
+
+  // ---------- DIRECTOR ----------
+  const WALK_SPEED = 12, SWIM_SPEED = 20;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const WALK_START = M_X + 4, WALK_END = E_X + 2;
+  let stage = "cling", stageT = 0, waitFor = 3.0, next = "trip";
+
+  function startStage(s, now) { stage = s; stageT = now; }
+  function direct(now) {
+    const el = now - stageT;
+    switch (stage) {
+      case "cling":
+        phage.legs = Math.floor(now * 1.3) % 5 === 0 ? 1 : 0;
+        if (el > waitFor) {
+          if (next === "trip") { phage.legs = 0; startStage("climb", now); }
+          else {
+            const dir = Math.random() < 0.5 ? 1 : -1;
+            Object.assign(swimmer, { on: true, kind: Math.random() < 0.15 ? "giardia" : "pro", dir, x: dir > 0 ? -30 : 222, base: rand(9, 87), t0: now });
+            startStage("swim", now);
+          }
+        }
+        break;
+      case "swim":
+        phage.legs = Math.floor(now * 1.3) % 5 === 0 ? 1 : 0;
+        swimmer.x = (swimmer.dir > 0 ? -30 : 222) + swimmer.dir * el * SWIM_SPEED;
+        swimmer.y = swimmer.base + Math.sin(el * 1.3) * 4;
+        if ((swimmer.dir > 0 && swimmer.x > 222) || (swimmer.dir < 0 && swimmer.x < -30)) { swimmer.on = false; waitFor = rand(8, 13); next = "trip"; startStage("cling", now); }
+        break;
+      case "climb":
+        phage.y = CLING.y - Math.min(4, el * 4);
+        phage.legs = Math.floor(el * 6) % 2;
+        if (el > 1.1) { Object.assign(phage, { mode: "up", x: WALK_START, y: TOP_Y, legs: 0 }); startStage("walk", now); }
+        break;
+      case "walk":
+        phage.x = Math.min(WALK_END, WALK_START + el * WALK_SPEED);
+        phage.legs = Math.floor(phage.x / 2) % 2;
+        if (phage.x >= WALK_END) { phage.legs = 0; startStage("settle", now); }
+        break;
+      case "settle": if (el > 0.6) startStage("inject", now); break;
+      case "inject":
+        phage.tail = el < 0.15 ? 3 : 2;
+        eState.dna = Math.min(9, Math.floor(el * 7) + 1);
+        if (el > 1.5) { phage.empty = true; startStage("eblink", now); }
+        break;
+      case "eblink":
+        eState.show = Math.floor(el * 5) % 2 === 0;
+        if (el > 1.8) { eState.show = false; eState.dna = 0; startStage("gone", now); }
+        break;
+      case "gone":
+        phage.on = el < 0.8 ? Math.floor(el * 8) % 2 === 0 : false;
+        if (el > 3.2) startStage("ereturn", now);
+        break;
+      case "ereturn":
+        eState.show = el > 0.6 || Math.floor(el * 8) % 2 === 0;
+        if (el > 1.4) { Object.assign(phage, { on: true, mode: "cling", x: CLING.x, y: CLING.y, tail: 4, empty: false, legs: 0 }); startStage("phagein", now); }
+        break;
+      case "phagein":
+        phage.on = el > 0.6 || Math.floor(el * 8) % 2 === 0;
+        if (el > 0.7) { phage.on = true; waitFor = rand(8, 13); next = "swim"; startStage("cling", now); }
+        break;
+    }
+  }
+
+  // ---------- sizing + loop ----------
+  function fit(canvas, maxW, target) {
+    const avail = Math.min(maxW, target);
+    const scale = Math.max(1, Math.floor(avail / canvas.width));
+    canvas.style.width = canvas.width * scale + "px"; canvas.style.height = canvas.height * scale + "px";
+  }
+  function fitScene() {
+    const avail = Math.min(900, (document.documentElement.clientWidth || innerWidth || 360) - 32);
+    let scale = avail / sceneCv.width;
+    if (scale >= 3) scale = Math.floor(scale);
+    sceneCv.style.width = Math.round(sceneCv.width * scale) + "px"; sceneCv.style.height = Math.round(sceneCv.height * scale) + "px";
+  }
+  function sizeCanvases() {
+    const avail = titleEl.clientWidth || document.body.clientWidth || 360;
+    fit(logoCv, avail, 520); fitScene();
+    const mini = $("miniLogo"); if (mini) { const s = (document.documentElement.clientWidth || 360) < 560 ? 1 : 2; mini.style.width = mini.width * s + "px"; mini.style.height = mini.height * s + "px"; }
+  }
+
+  let raf = null, lastT = 0;
+  function loop(tm) {
+    if (tm - lastT > 33) {
+      const now = tm / 1000;
+      direct(now);
+      scatter = Math.max(0, scatter - 0.025);
+      drawLogo(LP, true); drawScene(SP, now); lastT = tm;
+    }
+    raf = requestAnimationFrame(loop);
+  }
+  function startScene() { if (reduce) { drawStill(); return; } if (!raf) raf = requestAnimationFrame(loop); }
+  function stopScene() { if (raf) cancelAnimationFrame(raf); raf = null; }
+  const force = what => {
+    swimmer.on = false; Object.assign(eState, { show: true, dna: 0 });
+    Object.assign(phage, { on: true, mode: "cling", x: CLING.x, y: CLING.y, tail: 4, empty: false, legs: 0 });
+    next = what === "phage" ? "trip" : "swim"; waitFor = 0; startStage("cling", performance.now() / 1000);
+  };
+  // ---------- PLAY TRANSITION: zoom into a colony, Gram stain it under the microscope ----------
+  // Every play: the camera dives into one Staph colony on the plate, the microscope field irises open,
+  // crystal violet sweeps across, and grape-like clusters of Gram-positive cocci appear. Tap or press a key to skip.
+  function playIntro(reveal) {
+    if (reduce) { reveal(); return; }
+    const ov = $("scope"), cvs = $("scopeCanvas"), cap = $("scopeCap");
+    const g = cvs.getContext("2d");
+    const PX = innerWidth < 520 ? 3 : 4;
+    const W = Math.ceil(innerWidth / PX), H = Math.ceil(innerHeight / PX);
+    cvs.width = W; cvs.height = H;
+    g.imageSmoothingEnabled = false;
+    const cx = W / 2, cy = H / 2 - 4;
+    const R = Math.min(W * 0.46, H * 0.4, 110);
+    const SC = {
+      dark: tok("--scope-dark"), page: tok("--bg"),
+      field: "#F7E6F0", fieldEdge: "#E9CFDF", smudge: "#F1D3E4",
+      raw: "#DCCFD6", rawShade: "#C9BAC3",                       // unstained cocci: pale, barely there
+      cv: "#4B1E8C", cvHi: "#7B52C2", cvShade: "#2E0F5C"          // crystal violet: Gram-positive purple
+    };
+
+    // the colony we dive into: the biggest isolated one, nearest the middle of the streak's upper right
+    const target = isolated.filter(c => c.r === 2).sort((a, b) => Math.hypot(a.x - (D.cx + 18), a.y - (D.cy - 20)) - Math.hypot(b.x - (D.cx + 18), b.y - (D.cy - 20)))[0] || isolated[0];
+    const snap = document.createElement("canvas"); snap.width = sceneCv.width; snap.height = sceneCv.height;
+    snap.getContext("2d").drawImage(sceneCv, 0, 0);
+    const rect = sceneCv.getBoundingClientRect();
+    const s0 = rect.width / sceneCv.width / PX;                  // one plate pixel, in overlay pixels, before zooming
+    const s1 = Math.min(W, H) / 7;                                // fully zoomed: the colony fills most of the screen
+    const start = { x: (rect.left / PX) + target.x * s0, y: (rect.top / PX) + target.y * s0 };
+
+    // grape-like clusters of cocci, packed by letting each new coccus stick to one already there
+    const r = 2, clusters = [];
+    const inField = (x, y, m) => Math.hypot(x - cx, y - cy) < R - m;
+    for (let k = 0, tries = 0; k < 11 && tries < 200; tries++) {
+      const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * R * 0.72;
+      const ccx = cx + Math.cos(a) * d, ccy = cy + Math.sin(a) * d;
+      if (clusters.some(c => Math.hypot(c.x - ccx, c.y - ccy) < 26)) continue;
+      const cocci = [{ x: 0, y: 0 }], n = 6 + Math.floor(Math.random() * 9);
+      for (let t2 = 0; cocci.length < n && t2 < 60; t2++) {
+        // try a dozen spots touching the bunch and keep the one closest to its middle, so it packs like grapes
+        let best = null;
+        for (let k2 = 0; k2 < 12; k2++) {
+          const base = cocci[Math.floor(Math.random() * cocci.length)], ang = Math.random() * Math.PI * 2;
+          const nx = base.x + Math.cos(ang) * (2 * r + 0.6), ny = base.y + Math.sin(ang) * (2 * r + 0.6);
+          if (!cocci.every(c => Math.hypot(c.x - nx, c.y - ny) >= 2 * r + 0.4) || !inField(ccx + nx, ccy + ny, 4)) continue;
+          const d2 = Math.hypot(nx, ny) + Math.random() * 1.5;
+          if (!best || d2 < best.d) best = { x: nx, y: ny, d: d2 };
+        }
+        if (best) cocci.push({ x: best.x, y: best.y });
+      }
+      clusters.push({ x: ccx, y: ccy, cocci, ph: Math.random() * 6.28 }); k++;
+    }
+    // a few loose singles and pairs between the clusters
+    for (let i = 0; i < 7; i++) {
+      const a = Math.random() * 6.28, d = Math.sqrt(Math.random()) * R * 0.8;
+      const pair = Math.random() < 0.5;
+      clusters.push({ x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, cocci: pair ? [{ x: 0, y: 0 }, { x: 2 * r + 0.6, y: 0 }] : [{ x: 0, y: 0 }], ph: Math.random() * 6.28 });
+    }
+    const smudges = []; for (let i = 0; i < 6; i++) { const a = Math.random() * 6.28, d = Math.random() * R * 0.75; smudges.push({ x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, rx: 6 + Math.random() * 8, ry: 3 + Math.random() * 4 }); }
+
+    // Timed to the sting: 2.77 s from pressing Play to the game being fully in (6 beats at 130 BPM)
+    const T = { zoom: 720, dark: 850, iris: 1040, stain: 1180, stained: 1700, hold: 2350, out: 420 };
+    const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const clamp = t => Math.max(0, Math.min(1, t));
+    let raf = null, t0 = performance.now(), revealed = false, done = false;
+    ov.hidden = false; stopScene();
+
+    const coccus = (x, y, stained) => {
+      x = Math.round(x); y = Math.round(y);
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (dx * dx + dy * dy > r * r + 1) continue;
+        let c = stained ? (dx + dy >= 2 ? SC.cvShade : SC.cv) : (dx + dy >= 2 ? SC.rawShade : SC.raw);
+        if (stained && dx === -1 && dy === -1) c = SC.cvHi;
+        g.fillStyle = c; g.fillRect(x + dx, y + dy, 1, 1);
+      }
+    };
+
+    function frame(now) {
+      const t = now - t0;
+      g.clearRect(0, 0, W, H);
+
+      if (t < T.dark) {
+        // 1) dive into the colony: the plate grows around it while the page fades to the scope's darkness
+        const e = ease(clamp(t / T.zoom));
+        const s = s0 * Math.pow(s1 / s0, e);
+        const px = start.x + (cx - start.x) * e, py = start.y + (cy - start.y) * e;
+        g.fillStyle = SC.page; g.fillRect(0, 0, W, H);
+        g.drawImage(snap, px - target.x * s, py - target.y * s, snap.width * s, snap.height * s);
+        const dk = clamp((t - T.zoom + 250) / (T.dark - T.zoom + 250));
+        if (dk > 0) { g.globalAlpha = dk; g.fillStyle = SC.dark; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
+        cap.textContent = t < 300 ? "" : "Picking a colony…";
+        raf = requestAnimationFrame(frame); return;
+      }
+
+      // 2) the microscope field irises open
+      g.fillStyle = SC.dark; g.fillRect(0, 0, W, H);
+      const rr = t < T.iris ? R * ease(clamp((t - T.dark) / (T.iris - T.dark))) : R;
+      g.save(); g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.clip();
+      g.fillStyle = SC.field; g.fillRect(cx - R, cy - R, R * 2, R * 2);
+      smudges.forEach(m => { g.fillStyle = SC.smudge; g.beginPath(); g.ellipse(Math.round(m.x), Math.round(m.y), m.rx, m.ry, 0, 0, Math.PI * 2); g.fill(); });
+
+      // 3) crystal violet sweeps left to right; everything it passes turns purple and stays purple
+      const sweep = cx - R + 2 * R * clamp((t - T.stain) / (T.stained - T.stain));
+      clusters.forEach(cl => {
+        const jx = Math.sin(t / 420 + cl.ph) * 0.8, jy = Math.cos(t / 510 + cl.ph) * 0.8;
+        cl.cocci.forEach(c => { const x = cl.x + c.x + jx, y = cl.y + c.y + jy; coccus(x, y, t >= T.stained || x < sweep); });
+      });
+      if (t >= T.stain && t < T.stained) { g.fillStyle = SC.cvHi; g.fillRect(Math.round(sweep), cy - R, 1, R * 2); }
+      // soft darker rim, like the edge of a real field of view
+      if (rr > 2) { g.strokeStyle = SC.fieldEdge; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, rr - 1, 0, Math.PI * 2); g.stroke(); }
+      g.restore();
+
+      cap.textContent = t < T.stain ? "Gram staining…" : t < T.stained ? "Adding crystal violet…" : "Gram-positive cocci in clusters";
+      if (t >= T.hold && !revealed) slideOut();
+      if (!done) raf = requestAnimationFrame(frame);
+    }
+
+    function slideOut() {
+      revealed = true;
+      reveal();                                                    // the game is now underneath
+      const gameEl = $("game");
+      gameEl.animate([{ transform: "translateX(55vw)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: T.out, easing: "cubic-bezier(.2,.8,.2,1)" });
+      const a = ov.animate([{ transform: "none", opacity: 1 }, { transform: "translateX(-35vw)", opacity: 0 }], { duration: T.out, easing: "ease-in", fill: "forwards" });
+      a.onfinish = finish;
+    }
+    function finish() {
+      if (done) return; done = true;
+      cancelAnimationFrame(raf);
+      ov.getAnimations().forEach(a => a.cancel());
+      ov.hidden = true; cap.textContent = "";
+      if (!revealed) { revealed = true; reveal(); }
+      ov.removeEventListener("pointerdown", finish); document.removeEventListener("keydown", finish);
+    }
+    ov.addEventListener("pointerdown", finish);
+    document.addEventListener("keydown", finish);
+    raf = requestAnimationFrame(frame);
+  }
+
+  window.micrerdleTitle = { startScene, stopScene, force, playIntro };
+
+  function drawStill() {
+    Object.assign(phage, { on: true, mode: "cling", x: CLING.x, y: CLING.y, legs: 0, tail: 4, empty: false });
+    drawLogo(LP, true); drawScene(SP, 4);
+  }
+
+  sizeCanvases(); drawMiniLogo();
+  startScene();
+  window.addEventListener("resize", sizeCanvases);
+  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { drawMiniLogo(); if (reduce) drawStill(); }); } catch (e) {}
+
+})();
+</script>
+
+<script>
+// =====================================================================
+// GAME: answer list, smart search, guesses (green = right organism, yellow = same type)
+// =====================================================================
+(function () {
+  const $ = id => document.getElementById(id);
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---------- Hint types ----------
+  // Each case hint has a type, which sets its label, icon and colour (colours are the --t-<type> CSS variables).
+  // Icons are little bitmaps: "#" or "1" = a full pixel, "2"-"6" = fainter shades. Drawn in the type's colour.
+  //   lab:          Gram stain, shape, culture media, hemolysis, catalase/coagulase/oxidase, special stains
+  //   exposure:     how and where you catch it: vectors, food, unpasteurized milk, animals, water, geography
+  //   biology:      what makes it tick: toxins, capsule, spores, intracellular life, survives the cold, odd traits
+  //   presentation: the disease it causes (use sparingly: facts over vignettes)
+  //   treatment:    drug of choice, resistance, prophylaxis, vaccines
+  //   history:      discoverers, name origins, famous outbreaks, bioweapons
+  //   etymology:    what the name means: Greek and Latin roots, prefixes and suffixes
+  //   special:      the weird one-off fact that fits nowhere else
+  const HINT_TYPES = {
+    lab:          { label: "Lab", icon: ["11......", "153.....", ".353....", "11353...", "13.353..", "1...351.", "1....11.", "13......", ".13..131", "..13..1.", "11111111"] },   // microscope (from Generdle)
+    exposure:     { label: "Exposure", icon: ["...1.1...", "....1....", "1..111..1", ".1.111.1.", "..13331..", "113333311", "..13331..", ".1.333.1.", "1..333..1", "....3...."] },   // tick
+    biology:      { label: "Biology", icon: [".111111......", "13333331.....", "135353311.11.", "13333331.11.1", ".111111......"] },   // rod bacterium with a flagellum
+    presentation: { label: "Presentation", icon: ["#...#....", "#...#....", ".#.#.....", "..#......", "..#......", "..#...##.", "..#..#..#", "...###..#", "......##.", "........."] },   // stethoscope (from Generdle)
+    treatment:    { label: "Treatment", icon: ["...111111111...", "1..155555551...", "111155555551111", "1..155555551...", "...111111111..."] },   // syringe
+    history:      { label: "History", icon: ["#########", ".#.....#.", ".#.###.#.", ".#.....#.", ".#.##..#.", ".#.....#.", ".#.###.#.", ".#.....#.", "#########", "........."] },   // scroll (from Generdle)
+    etymology:    { label: "Etymology", icon: ["11.........11", "1511.....1151", "155511.115551", "1533351533351", "1555551555551", "1533351533351", "1555551555551", "1111551551111", "....11111...."] },   // open dictionary
+    special:      { label: "Special", icon: ["..####..", ".##..##.", ".##..##.", ".....##.", "....##..", "...##...", "...##...", "........", "...##...", "...##..."] }   // question mark (from Generdle)
+  };
+  const SHADE = { "#": 1, "1": 1, "2": 0.82, "3": 0.66, "4": 0.5, "5": 0.36, "6": 0.2 };
+  function pixSvg(rows, scale) {
+    const w = rows[0].length, h = rows.length;
+    let r = "";
+    rows.forEach((row, y) => [...row].forEach((c, x) => { if (SHADE[c]) r += `<rect x="${x}" y="${y}" width="1" height="1"${SHADE[c] < 1 ? ` fill-opacity="${SHADE[c]}"` : ""}/>`; }));
+    return `<svg viewBox="0 0 ${w} ${h}" width="${w * scale}" height="${h * scale}" fill="currentColor" aria-hidden="true">${r}</svg>`;
+  }
+  const TILE_ICONS = {
+    hit:  ["......#", ".....##", "#...##.", "##.##..", ".###...", "..#...."],
+    near: [".##....", "#..#..#", "....##."],
+    miss: ["#...#", ".#.#.", "..#..", ".#.#.", "#...#"],
+    skip: ["#####"]
+  };
+
+  // ---------- Answer list ----------
+  const ORGANISMS = (window.MICRERDLE_ORGANISMS || []).map(o => ({ syn: [], ...o }));
+  const BY_ID = Object.fromEntries(ORGANISMS.map(o => [o.id, o]));
+  const TYPE_WORD = { Bacteria: "bacterium", Virus: "virus", Fungus: "fungus", Parasite: "parasite" };
+
+  // ---------- Cases ----------
+  // Case 001 is the case on LAUNCH_DATE, Case 002 the next day, and so on (switching at local midnight).
+  // Don't change LAUNCH_DATE after the game is public: it would move every case to a different day.
+  const LAUNCH_DATE = "2026-11-19";
+  const CASES = window.MICRERDLE_CASES || [];
+  CASES.forEach((c, i) => {
+    c.number = String(i + 1).padStart(3, "0");
+    if (!BY_ID[c.answer]) console.warn(`Micrerdle case ${c.number}: answer "${c.answer}" is not an id in organisms.js`);
+    c.hints.forEach((h, j) => { if (!HINT_TYPES[h.type]) console.warn(`Micrerdle case ${c.number}, hint ${j + 1}: unknown type "${h.type}" (use one of: ${Object.keys(HINT_TYPES).join(", ")})`); });
+  });
+  const [LY, LM, LD] = LAUNCH_DATE.split("-").map(Number);
+  const dayIndex = (date = new Date()) => Math.round((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(LY, LM - 1, LD)) / 86400000);
+  const caseDate = i => new Date(LY, LM - 1, LD + i);
+  const fmtDate = (d, long) => { try { return d.toLocaleDateString(undefined, long ? { weekday: "short", month: "short", day: "numeric" } : { month: "short", day: "numeric" }); } catch (e) { return ""; } };
+  const RAW_TODAY = dayIndex();
+  const HAS_TODAY = RAW_TODAY >= 0 && RAW_TODAY < CASES.length;            // false once we run out of cases
+  const TODAY = Math.min(Math.max(RAW_TODAY, 0), CASES.length - 1);        // before launch, preview Case 001
+  let current = TODAY;
+  let CASE = CASES[TODAY];
+  let MAX = CASE.hints.length;
+
+  // ---------- State (saved on this device) ----------
+  const fresh = () => ({ revealed: 1, events: [], status: "playing" });
+  const keyFor = c => "micrerdle-case-" + c.number + "-" + c.answer;
+  const memStates = {};
+  function stateFor(c) {
+    if (memStates[keyFor(c)]) return memStates[keyFor(c)];
+    try { const st = JSON.parse(localStorage.getItem(keyFor(c)) || "null"); if (st && st.events) return st; } catch (e) {}
+    return fresh();
+  }
+  let KEY = keyFor(CASE), state = stateFor(CASE);
+  function save() { memStates[KEY] = state; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  // ---------- Elements ----------
+  const hintsEl = $("hints"), guessesEl = $("guesses"), input = $("guess"), sug = $("suggest"),
+        msg = $("msg"), play = $("play"), reveal = $("reveal"), skipBtn = $("skipBtn");
+  const openHints = new Set(); let lastShown = -1;
+
+  // ---------- Smart search (same matching as Generdle) ----------
+  let matches = [], active = -1, picked = null;
+  const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
+  // Words kept apart so "aur" can match the start of a word, plus a squashed form so "ecoli" finds "E. coli"
+  const words = t => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  for (const o of ORGANISMS) o.keys = [o.n, ...o.syn].map((nm, i) => { const w = words(nm); return { nm, w, sq: w.replace(/ /g, ""), syn: i > 0, ws: w.split(" ") }; });
+  // Typo tolerance: words "match" when they share most of their letter pairs (stafylococus ~ staphylococcus)
+  const pairs = w => { const out = new Set(); for (let i = 0; i < w.length - 1; i++) out.add(w.slice(i, i + 2)); return out; };
+  // edit distance that counts a swapped pair of letters as one typo (lsiteria -> listeria)
+  function typos(a, b, max) {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    let prev2 = null, prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const row = [i]; let rowMin = i;
+      for (let j = 1; j <= b.length; j++) {
+        let v = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        if (prev2 && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, prev2[j - 2] + 1);
+        row.push(v); rowMin = Math.min(rowMin, v);
+      }
+      if (rowMin > max) return max + 1;
+      prev2 = prev; prev = row;
+    }
+    return prev[b.length];
+  }
+  const fixPh = s => s.replace(/ph/g, "f");    // "stafylococcus" ~ "staphylococcus"
+  function similar(qw, qp, kw) {
+    if (kw.startsWith(qw)) return true;
+    kw = fixPh(kw);
+    if (qw.length < 5 || kw[0] !== qw[0]) return false;
+    const max = qw.length >= 8 ? 2 : 1;
+    if (typos(qw, kw, max) <= max || typos(qw, kw.slice(0, qw.length), max) <= max) return true;
+    if (Math.abs(kw.length - qw.length) > 2) return false;
+    const kp = pairs(kw); let shared = 0;
+    for (const p of qp) if (kp.has(p)) shared++;
+    return (2 * shared) / (qp.size + kp.size) >= 0.6;
+  }
+  function fuzzySearch(wq) {
+    const qws = fixPh(wq).split(" ").filter(Boolean), qps = qws.map(pairs), need = Math.ceil(qws.length / 2);
+    const out = [];
+    for (const o of ORGANISMS) {
+      let best = null;
+      for (const k of o.keys) {
+        let hit = 0;
+        qws.forEach((qw, i) => { if (k.ws.some(kw => similar(qw, qps[i], kw))) hit++; });
+        if (hit >= need) { const score = 3 + (qws.length - hit) * 0.6 + (k.syn ? 0.4 : 0); if (!best || score < best.score) best = { score, via: k.nm }; }
+      }
+      if (best) out.push({ o, via: best.via, score: best.score + o.n.length / 250 });
+    }
+    return out;
+  }
+  function search(q) {
+    const wq = words(q); if (!wq) return [];
+    const sq = wq.replace(/ /g, "");
+    const out = [];
+    for (const o of ORGANISMS) {
+      let best = null;
+      for (const k of o.keys) {
+        let score;
+        if (k.w.startsWith(wq)) score = 0;
+        else if (k.w.includes(" " + wq)) score = 1;
+        else if (sq.length > 2 && k.sq.startsWith(sq)) score = 0.5;   // "ecoli" -> "E. coli", "hepb" -> "Hep B"
+        else if (k.w.includes(wq)) score = 2;
+        else if (sq.length > 2 && k.sq.includes(sq)) score = 2.5;
+        else continue;
+        if (k.syn) score += 0.4;
+        if (!best || score < best.score) best = { score, via: k.nm };
+      }
+      if (best) out.push({ o, via: best.via, score: best.score + o.n.length / 250 });
+    }
+    if (out.length < 2 && wq.length >= 4) {               // no real hits: try close spellings
+      const have = new Set(out.map(m => m.o));
+      for (const m of fuzzySearch(wq)) if (!have.has(m.o)) out.push(m);
+    }
+    return out.sort((a, b) => a.score - b.score || a.o.n.localeCompare(b.o.n)).slice(0, 8);
+  }
+  function renderSuggest() {
+    sug.innerHTML = "";
+    if (!matches.length) { sug.hidden = true; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); return; }
+    matches.forEach((m, i) => {
+      const li = document.createElement("li");
+      li.setAttribute("role", "option"); li.id = "opt-" + i;
+      li.setAttribute("aria-selected", i === active ? "true" : "false");
+      const name = document.createElement("span"); name.textContent = m.o.n; li.appendChild(name);
+      if (m.via !== m.o.n) { const sm = document.createElement("small"); sm.textContent = m.via; li.appendChild(sm); }   // which alias matched
+      li.addEventListener("mousedown", e => { e.preventDefault(); choose(i); submit(); });
+      sug.appendChild(li);
+    });
+    sug.hidden = false; input.setAttribute("aria-expanded", "true");
+    if (active >= 0) { input.setAttribute("aria-activedescendant", "opt-" + active); sug.children[active]?.scrollIntoView({ block: "nearest" }); }
+  }
+  function choose(i) { const m = matches[i]; if (!m) return; picked = m.o; input.value = m.o.n; matches = []; active = -1; renderSuggest(); }
+  input.addEventListener("input", () => { picked = null; matches = search(input.value); active = matches.length ? 0 : -1; renderSuggest(); msg.textContent = ""; });
+  input.addEventListener("keydown", e => {
+    if (e.key === "ArrowDown" && matches.length) { e.preventDefault(); active = (active + 1) % matches.length; renderSuggest(); }
+    else if (e.key === "ArrowUp" && matches.length) { e.preventDefault(); active = (active - 1 + matches.length) % matches.length; renderSuggest(); }
+    else if (e.key === "Enter") { e.preventDefault(); if (matches.length && active >= 0) choose(active); submit(); }
+    else if (e.key === "Escape") { matches = []; renderSuggest(); }
+  });
+  input.addEventListener("blur", () => setTimeout(() => { matches = []; renderSuggest(); }, 120));
+
+  // ---------- Game logic ----------
+  function resolve() {
+    if (picked) return picked;
+    const nv = norm(input.value);
+    return ORGANISMS.find(o => norm(o.n) === nv) || ORGANISMS.find(o => o.syn.some(s => norm(s) === nv)) || null;
+  }
+  function submit() {
+    if (state.status !== "playing") return;
+    if (!input.value.trim()) { msg.textContent = "Type an organism first."; return; }
+    const o = resolve();
+    if (!o) { msg.textContent = "Pick an organism from the list."; return; }
+    if (state.events.some(ev => ev.id === o.id)) { msg.textContent = "You already guessed that one."; return; }
+    const answer = BY_ID[CASE.answer];
+    // green = the right organism, yellow = same type (bacteria, virus, fungus, parasite), gray = different type
+    const result = o.id === answer.id ? "hit" : o.type === answer.type ? "near" : "miss";
+    state.events.push({ kind: "guess", id: o.id, result });
+    input.value = ""; picked = null; msg.textContent = "";
+    if (result === "hit") { state.status = "won"; window.micrerdleMusic?.correct(); } else advance();
+    save(); render();
+    if (state.status !== "playing") setTimeout(() => reveal.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }), 500);
+    else input.focus();
+  }
+  function advance() { if (state.revealed < MAX) state.revealed++; else state.status = "lost"; }
+  function skip() {
+    if (state.status !== "playing") return;
+    state.events.push({ kind: "skip" }); advance(); save(); render();
+    if (state.status !== "playing") setTimeout(() => reveal.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }), 500);
+  }
+  $("guessBtn").addEventListener("click", submit);
+  skipBtn.addEventListener("click", skip);
+  $("resetBtn").addEventListener("click", () => { state = fresh(); save(); openHints.clear(); lastShown = -1; render(); input.focus(); });
+
+  // ---------- Render ----------
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  function render() {
+    const done = state.status !== "playing";
+    const shown = done ? MAX : state.revealed;
+    const cells = $("meterCells"); cells.innerHTML = "";
+    for (let i = 0; i < MAX; i++) { const c = document.createElement("i"); if (i < shown) c.className = "on"; cells.appendChild(c); }
+    $("meter").className = "meter" + (state.status === "won" ? " won" : state.status === "lost" ? " lost" : "");
+    $("meterLabel").textContent = done ? "All hints shown" : `Hint ${state.revealed} of ${MAX}`;
+
+    if (shown !== lastShown) { openHints.clear(); lastShown = shown; }   // a new hint folds the older ones
+    hintsEl.innerHTML = "";
+    CASE.hints.slice(0, shown).forEach((h, i) => {
+      const li = document.createElement("li");
+      const isNewest = i === shown - 1 && !done;
+      const open = isNewest || openHints.has(i);
+      li.className = `hint ${h.type || ""}` + (isNewest ? " latest" : " collapsible") + (open ? " open" : " collapsed");
+      const t = HINT_TYPES[h.type] || { label: h.type || "Hint", icon: ["##", "##"] };
+      li.innerHTML = `<div class="hint-head"><span class="n">${i + 1}</span><span class="hint-tag"><span class="emo">${pixSvg(t.icon, 2)}</span><span class="lbl"></span></span></div><p></p>`;
+      li.querySelector(".lbl").textContent = t.label;
+      li.querySelector("p").innerHTML = esc(h.text).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");   // **like this** = bold
+      if (!isNewest) {
+        li.tabIndex = 0; li.setAttribute("role", "button"); li.setAttribute("aria-expanded", open ? "true" : "false");
+        const toggle = () => { openHints.has(i) ? openHints.delete(i) : openHints.add(i); render(); hintsEl.children[i]?.focus({ preventScroll: true }); };
+        li.addEventListener("click", toggle);
+        li.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+      }
+      hintsEl.appendChild(li);
+    });
+
+    guessesEl.innerHTML = "";
+    const answer = BY_ID[CASE.answer];
+    state.events.forEach(ev => {
+      const li = document.createElement("li"); li.className = "g";
+      if (ev.kind === "skip") {
+        li.innerHTML = `<div class="tile skip">${pixSvg(TILE_ICONS.skip, 3)}</div><div class="g-body"><div class="g-name">Skipped</div></div>`;
+      } else {
+        const o = BY_ID[ev.id];
+        const kind = TYPE_WORD[o.type][0].toUpperCase() + TYPE_WORD[o.type].slice(1);
+        const note = ev.result === "hit" ? "Correct!" : ev.result === "near" ? `${kind} · same type as the answer` : `${kind} · different type`;
+        li.innerHTML = `<div class="tile ${ev.result}">${pixSvg(TILE_ICONS[ev.result], 3)}</div><div class="g-body"><div class="g-name"></div><div class="g-note"></div></div>`;
+        li.querySelector(".g-name").textContent = o.n;
+        li.querySelector(".g-note").textContent = note;
+      }
+      guessesEl.appendChild(li);
+    });
+
+    play.hidden = done;
+    skipBtn.textContent = state.revealed === MAX ? "Give up" : "Skip";
+    reveal.hidden = !done;
+    if (done) renderReveal(answer);
+  }
+
+  function shareText() {
+    const sq = { hit: "🟩", near: "🟨", miss: "⬜" };
+    const row = state.events.map(ev => ev.kind === "skip" ? "⬛" : sq[ev.result]).join("");
+    const score = state.status === "won" ? `${state.revealed}/${MAX}` : `X/${MAX}`;
+    return `Micrerdle #${CASE.number} ${score}\n${row}`;
+  }
+  function renderReveal(answer) {
+    const won = state.status === "won";
+    // The answer card is bare for now: the high-yield points, art and sources come with the real cases.
+    reveal.innerHTML = `
+      <p class="verdict">${won ? `Solved on hint ${state.revealed} of ${MAX}` : "Out of hints"}</p>
+      <h2 class="dx"></h2>
+      <div class="case-art" hidden></div>
+      <div class="summary"></div>
+      <table class="chart"><tbody></tbody></table>
+      <div class="share"><pre id="shareText"></pre><button class="btn-main" id="copyBtn" type="button">Copy result</button></div>`;
+    const dx = reveal.querySelector(".dx"); dx.textContent = answer.n;
+    const sm = document.createElement("small"); sm.textContent = `${answer.type} · ${answer.group}`; dx.appendChild(sm);
+    // the case's end animation: an art(host, helpers) function in its case file, drawn into this box
+    const artEl = reveal.querySelector(".case-art");
+    if (CASE.reveal && typeof CASE.reveal.art === "function") {
+      artEl.hidden = false;
+      try { CASE.reveal.art(artEl, { tok: name => getComputedStyle(document.documentElement).getPropertyValue(name).trim(), still: reduce }); }
+      catch (e) { console.warn(`Micrerdle case ${CASE.number}: art failed`, e); artEl.hidden = true; }
+    }
+
+    // Summary: blank-line-separated paragraphs, **bold** allowed
+    const r = CASE.reveal || {};
+    const sumEl = reveal.querySelector(".summary");
+    (r.summary || "").split(/\n\s*\n/).map(t => t.trim()).filter(Boolean).forEach(par => {
+      const pe = document.createElement("p"); pe.innerHTML = esc(par).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); sumEl.appendChild(pe);
+    });
+    sumEl.hidden = !(r.summary || "").trim();
+
+    // The chart: the same five rows on every case. Category comes from organisms.js so it can't disagree
+    // with the answer; "type" falls back to that organism's group.
+    const ch = r.chart || {};
+    const ROWS = [
+      ["Category", answer.type],
+      ["Type", ch.type || answer.group],
+      ["Transmission", ch.transmission],
+      ["Treatment", ch.treatment],
+      ["High-yield association", ch.association]
+    ];
+    const tb = reveal.querySelector(".chart tbody");
+    let anyRow = false;
+    ROWS.forEach(([label, val]) => {
+      if (!val) return;
+      anyRow = true;
+      const tr = document.createElement("tr");
+      const th = document.createElement("th"); th.scope = "row"; th.textContent = label;
+      const td = document.createElement("td"); td.innerHTML = esc(val).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+      tr.append(th, td); tb.appendChild(tr);
+    });
+    reveal.querySelector(".chart").hidden = !anyRow;
+    const pre = reveal.querySelector("#shareText"); pre.textContent = shareText();
+    const btn = reveal.querySelector("#copyBtn");
+    btn.addEventListener("click", () => {
+      const fallback = () => { const range = document.createRange(); range.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(range); btn.textContent = "Selected, press copy"; };
+      try { navigator.clipboard.writeText(shareText()).then(() => { btn.textContent = "Copied"; }, fallback); } catch (e) { fallback(); }
+    });
+  }
+
+  // ---------- Title screen <-> game <-> archive ----------
+  const titleEl = $("titleScreen"), gameEl = $("game"), archiveEl = $("archiveScreen"), playBtn = $("playBtn");
+  $("caseLine").textContent = HAS_TODAY ? `Case #${CASES[TODAY].number} · ${fmtDate(caseDate(TODAY), true)}` : "New cases coming soon";
+  const metaFor = i => `Case ${CASES[i].number} · ${fmtDate(caseDate(i), false)}` + (i === TODAY && HAS_TODAY ? "" : " · Archive");
+  $("caseMeta").textContent = metaFor(TODAY);
+  function paintPlay() {
+    if (!HAS_TODAY && RAW_TODAY >= CASES.length) { playBtn.textContent = "Play past cases"; return; }
+    const st = stateFor(CASES[TODAY]);
+    playBtn.textContent = st.status === "playing" ? (st.events.length ? "Continue today's round" : "Play today's round") : "See today's result";
+  }
+  // Switch the game to another case (today's or one from the archive)
+  function loadCase(i) {
+    current = i; CASE = CASES[i]; MAX = CASE.hints.length; KEY = keyFor(CASE); state = stateFor(CASE);
+    openHints.clear(); lastShown = -1;
+    $("caseMeta").textContent = metaFor(i);
+  }
+  function enterGame() {
+    titleEl.hidden = true; archiveEl.hidden = true; gameEl.hidden = false; window.micrerdleTitle?.stopScene(); window.scrollTo(0, 0);
+    render();
+    if (state.status === "playing") input.focus({ preventScroll: true });
+  }
+  function showTitle(fromArchive) {
+    if (fromArchive !== true) window.micrerdleMusic?.toTitle();   // coming back from the archive, the title music is still playing
+    gameEl.hidden = true; archiveEl.hidden = true; titleEl.hidden = false; paintPlay(); window.scrollTo(0, 0); window.micrerdleTitle?.startScene();
+  }
+  function showArchive() {
+    const fromGame = !gameEl.hidden;
+    titleEl.hidden = true; gameEl.hidden = true; archiveEl.hidden = false; window.micrerdleTitle?.stopScene(); window.scrollTo(0, 0);
+    if (fromGame) window.micrerdleMusic?.toTitle();
+    const list = $("archiveList"); list.innerHTML = "";
+    const last = Math.min(Math.max(RAW_TODAY, 0), CASES.length - 1);   // newest first; future cases stay hidden
+    for (let i = last; i >= 0; i--) {
+      const c = CASES[i], st = stateFor(c), done = st.status !== "playing";
+      const li = document.createElement("li");
+      const b = document.createElement("button"); b.type = "button";
+      b.className = "arch-row" + (i === TODAY && HAS_TODAY ? " today" : "");
+      const stat = st.status === "won" ? ["won", `Solved ${st.revealed}/${c.hints.length}`] : st.status === "lost" ? ["lost", "Missed"]
+                 : st.events.length ? ["going", "In progress"] : ["new", "Not played"];
+      b.innerHTML = `<span class="arch-num">#${c.number}</span><span class="arch-main"><span class="arch-date"></span><span class="arch-dx"></span></span><span class="arch-stat ${stat[0]}">${stat[1]}</span>`;
+      b.querySelector(".arch-date").textContent = fmtDate(caseDate(i), true) + (i === TODAY && HAS_TODAY ? " · Today" : "");
+      b.querySelector(".arch-dx").textContent = done && BY_ID[c.answer] ? BY_ID[c.answer].n : "Organism hidden";
+      b.addEventListener("click", () => { loadCase(i); window.micrerdleMusic?.toGame(true); enterGame(); });
+      li.appendChild(b); list.appendChild(li);
+    }
+    $("archiveBack").focus({ preventScroll: true });
+  }
+  playBtn.addEventListener("click", () => {
+    if (!HAS_TODAY && RAW_TODAY >= CASES.length) { showArchive(); return; }
+    if (current !== TODAY) loadCase(TODAY);
+    window.micrerdleMusic?.toGame(); const intro = window.micrerdleTitle?.playIntro; if (intro) intro(enterGame); else enterGame();
+  });
+  $("homeBtn").addEventListener("click", showTitle);
+  $("homeLogo").addEventListener("click", showTitle);
+  $("archiveBtn").addEventListener("click", showArchive);
+  $("archiveBtnGame").addEventListener("click", showArchive);
+  $("archiveBack").addEventListener("click", () => showTitle(true));
+  paintPlay();
+
+  // For testing in the browser console: micrerdleSearch("staf aureus")
+  window.micrerdleSearch = q => search(q).map(m => m.o.n + (m.via !== m.o.n ? `  (via ${m.via})` : ""));
+})();
+</script>
+
+<!-- The title theme (base64 FLAC). Replace music-data.js to change the song; see the MUSIC block below for loop points. -->
+<script src="music-data.js"></script>
+<script>
+// =====================================================================
+// MUSIC: the 16-bar theme loops on the title screen and in the game; a sting plays on Play
+// =====================================================================
+// The file is 17 bars: bars 1-16 are the loop, and bar 17 is the last note ringing out. Each time round,
+// a fresh copy starts on bar 1 while the previous copy's bar 17 is still sounding, so the last note
+// hangs over the start of the next loop. (A plain audio loop can't overlap itself, so the repeats are
+// scheduled by hand, a few seconds ahead.)
+// Pressing Play: the sting plays on top of the song right away, and the song eases down to the quieter
+// in-game volume. Home: back to bar 1 at title volume.
+// Both tracks are lossless FLAC (music-data.js) so everything lands exactly on the beat.
+(function () {
+  const $ = id => document.getElementById(id);
+  const BPM = 130, BEAT = 60 / BPM, BAR = 4 * BEAT;   // one bar = 1.846 s
+  const LOOP_LEN = 16 * BAR;                           // the next time round starts after bar 16
+  // Loud on the title screen, much quieter (about a third, or -10 dB) while you're playing
+  const TITLE_VOLUME = 0.32, GAME_VOLUME = 0.1, STING_VOLUME = 0.36;   // the tracks are mastered to Generdle's loudness
+  // Medium softening for the song: takes the edge off the square-wave buzz without touching the melody or bass.
+  // dip = a gentle cut where the harshness lives; lowpass = rolls off the fizz above it;
+  // reverb = room sound to smooth note edges (off here); makeup = puts back the ~1 dB the cuts take away.
+  //   Max:  { dipHz: 2500, dipDb: -9, dipQ: 0.7, lowpassHz: 3000, reverbWet: 0.22, reverbSecs: 1.6, makeup: 1.18 }
+  //   Off:  { dipHz: 3000, dipDb: 0, dipQ: 0.8, lowpassHz: 20000, reverbWet: 0, reverbSecs: 1.6, makeup: 1 }
+  const SOFTEN = { dipHz: 3000, dipDb: -5, dipQ: 0.8, lowpassHz: 5500, reverbWet: 0, reverbSecs: 1.6, makeup: 1.12 };
+  let roomIR = null;   // the reverb's room sound: a short burst of fading noise, made once
+  function room() {
+    if (roomIR) return roomIR;
+    const len = Math.round(ctx.sampleRate * SOFTEN.reverbSecs);
+    roomIR = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = roomIR.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+    return roomIR;
+  }
+
+  const titleEl = $("titleScreen"), scopeEl = $("scope"), archiveEl = $("archiveScreen");
+  const onTitleSide = () => !titleEl.hidden || !archiveEl.hidden;   // the title and the archive share the title music
+  const musicBtns = [$("musicBtn"), $("musicBtnGame")].filter(Boolean);
+  let ctx = null, buf = null, stingBuf = null, correctBuf = null, decoding = false; const waiting = [];
+  let gain = null, voices = [], info = null, nextAt = 0, timer = null;   // the song: its volume, the copies playing, when bar 1 was
+  let stingSrc = null, stingGain = null, stingInfo = null;
+  let musicOn = false;
+  try { musicOn = localStorage.getItem("micrerdle-music") === "on"; } catch (e) {}
+
+  function toBytes(b64) { const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
+  function unlock() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      if (!ctx) ctx = new AC();
+      if (ctx.state === "suspended") ctx.resume();
+    } catch (e) {}
+  }
+  function load(cb) {   // decodes the theme and the sting once, then runs cb
+    unlock(); if (!ctx || !window.MICRERDLE_MUSIC) return;
+    if (buf && (stingBuf || !window.MICRERDLE_STING) && (correctBuf || !window.MICRERDLE_CORRECT)) { cb(); return; }
+    waiting.push(cb);
+    if (decoding) return; decoding = true;
+    let left = 1 + (window.MICRERDLE_STING ? 1 : 0) + (window.MICRERDLE_CORRECT ? 1 : 0);
+    const done = () => { if (--left === 0) { decoding = false; waiting.splice(0).forEach(f => f()); } };
+    ctx.decodeAudioData(toBytes(window.MICRERDLE_MUSIC), b => { buf = b; done(); }, () => { decoding = false; });
+    if (window.MICRERDLE_STING) ctx.decodeAudioData(toBytes(window.MICRERDLE_STING), b => { stingBuf = b; done(); }, () => { stingBuf = null; done(); });
+    if (window.MICRERDLE_CORRECT) ctx.decodeAudioData(toBytes(window.MICRERDLE_CORRECT), b => { correctBuf = b; done(); }, () => { correctBuf = null; done(); });
+  }
+
+  // ---------- the song ----------
+  function voice(at) {           // one copy of the song from bar 1, into the song's volume
+    const s = ctx.createBufferSource(); s.buffer = buf; s.connect(gain);
+    s.start(at);
+    voices.push(s); s.onended = () => { voices = voices.filter(v => v !== s); };
+  }
+  function keepQueued() {        // always have the next time round scheduled a few seconds ahead
+    while (nextAt - ctx.currentTime < 4) { voice(nextAt); nextAt += LOOP_LEN; }
+    timer = setTimeout(keepQueued, 1000);
+  }
+  function startSong(when, volume, fadeIn) {   // from bar 1 at `when`
+    gain = ctx.createGain();
+    gain.gain.setValueAtTime(fadeIn ? 0 : volume, when);
+    if (fadeIn) gain.gain.linearRampToValueAtTime(volume, when + fadeIn);
+    // song -> volume -> dip -> low-pass -> (dry + a little reverb) -> makeup -> speakers
+    const dip = ctx.createBiquadFilter(); dip.type = "peaking"; dip.frequency.value = SOFTEN.dipHz; dip.Q.value = SOFTEN.dipQ; dip.gain.value = SOFTEN.dipDb;
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = SOFTEN.lowpassHz; lp.Q.value = 0;
+    const makeup = ctx.createGain(); makeup.gain.value = SOFTEN.makeup;
+    gain.connect(dip); dip.connect(lp); lp.connect(makeup); makeup.connect(ctx.destination);
+    if (SOFTEN.reverbWet > 0) {
+      const verb = ctx.createConvolver(); verb.buffer = room();
+      const wet = ctx.createGain(); wet.gain.value = SOFTEN.reverbWet;
+      lp.connect(verb); verb.connect(wet); wet.connect(makeup);
+    }
+    voice(when);
+    info = { when }; nextAt = when + LOOP_LEN;
+    keepQueued();
+  }
+  function stopSong(fade) {
+    clearTimeout(timer); timer = null;
+    if (gain && ctx) {
+      const now = ctx.currentTime;
+      gain.gain.cancelScheduledValues(now); gain.gain.setValueAtTime(gain.gain.value, now); gain.gain.linearRampToValueAtTime(0, now + fade);
+      voices.forEach(v => { try { v.stop(now + fade + 0.05); } catch (e) {} });
+    }
+    voices = []; gain = null; info = null;
+  }
+  // where we are in the 16-bar loop right now (seconds from bar 1)
+  const loopPos = T => (((T - info.when) % LOOP_LEN) + LOOP_LEN) % LOOP_LEN;
+  function stop(fade = 0.5) {
+    stopSong(fade);
+    if (stingSrc && ctx) {
+      const now = ctx.currentTime;
+      stingGain.gain.cancelScheduledValues(now); stingGain.gain.setValueAtTime(stingGain.gain.value, now); stingGain.gain.linearRampToValueAtTime(0, now + fade);
+      try { stingSrc.stop(now + fade + 0.05); } catch (e) {}
+    }
+    stingSrc = null; stingInfo = null;
+  }
+
+  function startTitle() {
+    if (!musicOn || !onTitleSide() || info || !scopeEl.hidden) return;
+    load(() => { if (!musicOn || !onTitleSide() || info || !scopeEl.hidden) return; startSong(ctx.currentTime, TITLE_VOLUME, 0.5); });
+  }
+  function startGame() {   // in-game music, e.g. turning music on mid-game
+    if (!musicOn || info) return;
+    load(() => { if (!musicOn || info || onTitleSide()) return; startSong(ctx.currentTime, GAME_VOLUME, 1.0); });
+  }
+  function toGame(quiet) { // Play pressed: the sting plays over the song right away; the song eases to game volume (quiet: no sting, for archive cases)
+    if (!musicOn) return;
+    load(() => {
+      if (!musicOn) return;
+      if (!info) startSong(ctx.currentTime, GAME_VOLUME, 1.0);   // music wasn't playing yet
+      const now = ctx.currentTime;
+      gain.gain.cancelScheduledValues(now); gain.gain.setValueAtTime(gain.gain.value, now);
+      gain.gain.linearRampToValueAtTime(GAME_VOLUME, now + 0.6);
+      if (quiet || !stingBuf) return;
+      const at = now + 0.02;
+      if (stingSrc) { try { stingSrc.stop(); } catch (e) {} }
+      stingGain = ctx.createGain(); stingGain.gain.value = STING_VOLUME;
+      stingSrc = ctx.createBufferSource(); stingSrc.buffer = stingBuf;
+      stingSrc.connect(stingGain); stingGain.connect(ctx.destination);
+      stingSrc.start(at);
+      stingInfo = { when: at, dur: stingBuf.duration };
+    });
+  }
+  // ---------- sound effects (their own Sound on/off, like Generdle) ----------
+  const SFX_VOLUME = 0.16;   // correct-answer sound, kept low so it doesn't startle anyone in a quiet room (was 0.45, Generdle's level)
+  let soundOn = true;
+  try { soundOn = localStorage.getItem("micrerdle-sound") !== "off"; } catch (e) {}
+  const soundBtn = $("soundBtn");
+  function paintSound() { if (soundBtn) { soundBtn.textContent = soundOn ? "Sound on" : "Sound off"; soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false"); } }
+  if (soundBtn) soundBtn.addEventListener("click", () => {
+    soundOn = !soundOn; paintSound(); if (soundOn) unlock();
+    try { localStorage.setItem("micrerdle-sound", soundOn ? "on" : "off"); } catch (e) {}
+  });
+  paintSound();
+  function correct() {     // right answer: the music dips out, the correct sound plays, then the music comes back
+    if (!soundOn) return;
+    load(() => {
+      if (!correctBuf) return;
+      const now = ctx.currentTime;
+      const s = ctx.createBufferSource(), g = ctx.createGain();
+      s.buffer = correctBuf; g.gain.value = SFX_VOLUME; s.connect(g); g.connect(ctx.destination); s.start(now + 0.02);
+      if (!gain) return;
+      gain.gain.cancelScheduledValues(now); gain.gain.setValueAtTime(gain.gain.value, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.15);
+      gain.gain.setValueAtTime(0, now + correctBuf.duration - 0.3);
+      gain.gain.linearRampToValueAtTime(onTitleSide() ? TITLE_VOLUME : GAME_VOLUME, now + correctBuf.duration + 0.9);
+    });
+  }
+
+  function toTitle() {     // Home pressed: fade out, then the title theme from bar 1
+    stop(0.3);
+    setTimeout(startTitle, 350);
+  }
+  // state() is for testing in the browser console: where the music is and how loud
+  window.micrerdleMusic = { toGame, toTitle, correct, state: () => {
+    if (!ctx) return null;
+    const now = ctx.currentTime;
+    const out = info && now >= info.when ? { pos: +loopPos(now).toFixed(2), bar: Math.floor(loopPos(now) / BAR) + 1, copiesPlaying: voices.length, volume: +gain.gain.value.toFixed(2) } : {};
+    if (stingInfo && now < stingInfo.when + stingInfo.dur) out.sting = +(now - stingInfo.when).toFixed(2);
+    return out;
+  } };
+
+  function paint() {
+    musicBtns.forEach(b => { b.textContent = musicOn ? "♪ Music on" : "♪ Music off"; b.setAttribute("aria-pressed", musicOn ? "true" : "false"); });
+  }
+  musicBtns.forEach(btn => btn.addEventListener("click", () => {
+    musicOn = !musicOn; paint();
+    try { localStorage.setItem("micrerdle-music", musicOn ? "on" : "off"); } catch (e) {}
+    if (!musicOn) stop(0.4);
+    else if (onTitleSide()) startTitle();
+    else startGame();
+  }));
+  paint();
+  // If music was left on last time, it starts on the first tap or key press (browsers require one)
+  ["pointerdown", "keydown"].forEach(t => document.addEventListener(t, () => { unlock(); if (onTitleSide()) startTitle(); }));
+})();
+</script>
