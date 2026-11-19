@@ -1116,11 +1116,12 @@ footer button.btn-ghost { padding: 6px 12px; font-size: 11px; }
     if (done) renderReveal(answer);
   }
 
+  const SITE_URL = "https://micrerdle.com";   // the link under every shared result
   function shareText() {
     const sq = { hit: "🟩", near: "🟨", miss: "⬜" };
     const row = state.events.map(ev => ev.kind === "skip" ? "⬛" : sq[ev.result]).join("");
     const score = state.status === "won" ? `${state.revealed}/${MAX}` : `X/${MAX}`;
-    return `Micrerdle #${CASE.number} ${score}\n${row}`;
+    return `Micrerdle #${CASE.number} ${score}\n${row}\n${SITE_URL}`;
   }
   function renderReveal(answer) {
     const won = state.status === "won";
@@ -1172,10 +1173,16 @@ footer button.btn-ghost { padding: 6px 12px; font-size: 11px; }
     });
     reveal.querySelector(".chart").hidden = !anyRow;
     const pre = reveal.querySelector("#shareText"); pre.textContent = shareText();
+    // Phones: open the share sheet (Messages, Instagram, etc.), like Wordle. Computers: copy to the clipboard.
     const btn = reveal.querySelector("#copyBtn");
+    const phone = !!navigator.share && window.matchMedia && matchMedia("(pointer: coarse)").matches;
+    btn.textContent = phone ? "Share result" : "Copy result";
     btn.addEventListener("click", () => {
+      const text = shareText();
       const fallback = () => { const range = document.createRange(); range.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(range); btn.textContent = "Selected, press copy"; };
-      try { navigator.clipboard.writeText(shareText()).then(() => { btn.textContent = "Copied"; }, fallback); } catch (e) { fallback(); }
+      const copy = () => { try { navigator.clipboard.writeText(text).then(() => { btn.textContent = "Copied"; }, fallback); } catch (e) { fallback(); } };
+      if (phone) navigator.share({ text }).catch(err => { if (err && err.name !== "AbortError") copy(); });   // closing the share sheet is not an error
+      else copy();
     });
   }
 
