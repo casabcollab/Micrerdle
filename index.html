@@ -111,6 +111,39 @@ body {
 .authors figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .authors svg { width: 24px; height: 24px; display: block; image-rendering: pixelated; }
 @media (max-width: 720px) { .authors { position: static; align-self: flex-end; margin-top: -6px; } }
+
+/* ---------- Title screen promos: spoof online-sale ads ----------
+   Wide screens: one on each side of the title. Narrow screens: side by side under the Archive button.
+   The ad colours are fixed (bright yellow, red, coupon cream) so they pop in light and dark mode. */
+.promos { display: contents; }
+.promo { font-family: var(--font-pixel-small); text-align: center; line-height: 1.35; }
+.promo-sale { --ad-red: #D7263D; --ad-yellow: #FFE14D;
+  background: var(--ad-red); color: var(--ad-yellow); padding: 14px 14px 16px; transform: rotate(-5deg);
+  box-shadow: 0 0 0 3px var(--ad-yellow), 0 0 0 6px var(--ad-red), 8px 10px 0 4px var(--ink); }
+.promo-sale .ad-stars { display: block; font-size: 12px; letter-spacing: .35em; color: #FFFFFF; }
+.promo-sale .ad-head { display: block; font-family: var(--font-pixel); font-size: 13px; line-height: 1.6; margin-top: 8px; text-transform: uppercase;
+  text-shadow: 2px 2px 0 #7A0F1E; }
+.promo-sale .ad-head em { font-style: normal; color: #FFFFFF; }
+.promo-coupon { --ad-cream: #FFF8DC; --ad-ink: #1E3A8A; --ad-red: #D7263D;
+  position: relative; background: var(--ad-cream); color: var(--ad-ink); padding: 16px 14px 14px; transform: rotate(4deg);
+  outline: 3px dashed var(--ad-ink); outline-offset: -9px; box-shadow: 8px 10px 0 0 var(--ink); }
+.promo-coupon .ad-scissors { position: absolute; top: -13px; left: 14px; font-size: 18px; line-height: 1; background: var(--ad-cream); padding: 0 3px; color: var(--ad-ink); }
+.promo-coupon .ad-small { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.promo-coupon .ad-fine { display: block; margin-top: 8px; font-family: var(--font-display); font-size: 8.5px; line-height: 1.3; letter-spacing: 0; opacity: .75; }
+.promo-coupon .ad-code { display: inline-block; margin: 8px 0; padding: 6px 12px 7px; font-family: var(--font-pixel); font-size: 18px; letter-spacing: .08em;
+  color: #FFFFFF; background: var(--ad-red); box-shadow: 0 0 0 2px var(--ad-cream), 0 0 0 4px var(--ad-red); }
+@media (min-width: 1180px) {
+  .promo { position: absolute; top: 42%; width: 210px; }
+  .promo-sale { right: calc(100% + 40px); }
+  .promo-coupon { left: calc(100% + 40px); }
+}
+@media (max-width: 1179px) {
+  .promos { display: flex; gap: 22px; justify-content: center; align-items: center; flex-wrap: wrap; padding: 8px 6px 4px; }
+  .promo { width: min(200px, 44vw); }
+  .promo-sale .ad-head { font-size: 11px; }
+  .promo-coupon .ad-code { font-size: 15px; }
+  .promo-sale, .promo-coupon { padding-inline: 10px; }
+}
 @media (max-width: 480px) { .play-btn { font-size: 12px; } }
 
 /* ---------- Game screen (ported from Generdle, simplified) ---------- */
@@ -281,6 +314,20 @@ footer button.btn-ghost { padding: 6px 12px; font-size: 11px; }
   <button class="play-btn" id="playBtn" type="button">Play today's round</button>
   <p class="case-line" id="caseLine">Case #001</p>
   <button class="arch-btn" id="archiveBtn" type="button">Archive</button>
+  <div class="promos">
+    <aside class="promo promo-sale" aria-label="Made with Step studying in mind">
+      <span class="ad-stars" aria-hidden="true">★★★</span>
+      <span class="ad-head">Made With <em>Step</em> Studying in Mind!!</span>
+    </aside>
+    <aside class="promo promo-coupon" aria-label="Use code MRSA for 30% at select locations. Some restrictions apply.">
+      <span class="ad-scissors" aria-hidden="true">✂</span>
+      <span class="ad-small">Use Code</span>
+      <span class="ad-code">'MRSA'</span>
+      <span class="ad-small">for 30% at Select Locations.*</span>
+      <span class="ad-fine">*Some restrictions apply. See store for details. Not valid with any other offer.</span>
+    </aside>
+  </div>
+  <p class="byline">By Med Students, For Med Students.</p>
   <details class="howto info">
     <summary>Click here for more info</summary>
     <p>Micrerdle is made by a team of med students. It's primarily a fun, Step 1–relevant study tool, although it can be used by students and providers in any field! The cases, hints and music were made by our team. Some of the art is original, and some is made with the help of generative AI.</p>
@@ -1440,4 +1487,3 @@ footer button.btn-ghost { padding: 6px 12px; font-size: 11px; }
   ["pointerdown", "keydown"].forEach(t => document.addEventListener(t, () => { unlock(); if (onTitleSide()) startTitle(); }));
 })();
 </script>
-<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "00deca6b5eeb44fbbf6e3472c4025700"}'></script><!-- End Cloudflare Web Analytics -->
