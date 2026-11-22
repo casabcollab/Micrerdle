@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
 <style>
-/* Micrerdle. Gram-stain palette: safranin pink base, crystal-violet plum ink. */
+/* Micrerdle. Gram-stain palette: safranin pink base, crystal-violet plum ink. (no those are not the actual color names ) */
 :root {
   --bg: #F2C5E8;          /* base pink */
   --surface: #FBE7F5;
@@ -56,7 +56,7 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-/* play transition: full-screen microscope */
+/* play transition: full-screen microsope */
 #scope { position: fixed; inset: 0; z-index: 40; background: var(--scope-dark); cursor: pointer; overflow: hidden; }
 #scopeCanvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
 #scopeCap { position: absolute; left: 0; right: 0; bottom: calc(44px + env(safe-area-inset-bottom, 0px)); margin: 0; text-align: center;
@@ -73,7 +73,7 @@ body {
 }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* ---------- Title screen ---------- */
+/* ----------  this is the title screen ---------- */
 .title { position: relative; min-height: calc(100vh - 76px); max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; text-align: center; }
 .logo-canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
 .tagline { font-family: var(--font-pixel-small); font-size: 13px; color: var(--muted); margin: -12px 0 0; letter-spacing: .06em; text-transform: uppercase; }
@@ -412,6 +412,7 @@ footer button.btn-ghost { padding: 6px 12px; font-size: 11px; }
 <script src="cases/002-blastomyces-dermatitidis.js"></script>
 <script src="cases/003-plasmodium-vivax.js"></script>
 <script src="cases/004-ehec.js"></script>
+<script src="cases/005-streptococcus-pneumoniae.js"></script>
 
 <script>
 // =====================================================================
