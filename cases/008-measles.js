@@ -8,7 +8,7 @@ MICRERDLE_CASES.push({
   minigame: true,   // shows the "Bonus minigame inside" ad at the top of the case
   hints: [
     { type: "history",
-      text: "A Persian physician, al-Razi, called it \"more to be dreaded than smallpox.\"" },
+      text: "Around 910 AD, a Persian physician, al-Razi, called it \"more to be dreaded than smallpox.\"" },
     { type: "history",
       text: "In the 1800s it killed about a fifth of Hawaii, a third of Fiji, and more than half of the Great Andamanese, all people who had never been exposed to it." },
     { type: "special",
