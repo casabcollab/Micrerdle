@@ -197,6 +197,11 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .hint-tag { font-family: var(--font-pixel-small); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--t); background: var(--t-soft); padding: 4px 9px 4px 7px; display: inline-flex; align-items: center; gap: 7px; }
 .hint-tag svg, .tile svg { display: block; shape-rendering: crispEdges; }
 .hint p { margin: 0; }
+/* a picture in a hint (image: in the case file), with an optional credit line under it */
+.hint figure { margin: 4px 0 0; }
+.hint figure img { display: block; width: 100%; height: auto; background: #FFFFFF; padding: 6px; box-shadow: 0 0 0 2px var(--line); }
+.hint figcaption { margin-top: 6px; font-family: var(--font-pixel-small); font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.hint.collapsed figure { display: none; }
 .hint p b { font-weight: 700; color: var(--ink); }
 .hint.collapsed { padding: 10px 16px 11px; gap: 4px; cursor: pointer; }
 .hint.collapsed p { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; color: var(--muted); font-size: 15px; }
@@ -429,6 +434,7 @@ footer button.btn-ghost { padding: 6px 12px; font-size: 11px; }
 <script src="cases/005-streptococcus-pneumoniae.js"></script>
 <script src="cases/006-varicella-zoster-virus.js"></script>
 <script src="cases/007-salmonella.js"></script>
+<script src="cases/008-measles.js"></script>
 
 <script>
 // =====================================================================
@@ -1148,6 +1154,13 @@ footer button.btn-ghost { padding: 6px 12px; font-size: 11px; }
       li.innerHTML = `<div class="hint-head"><span class="n">${i + 1}</span><span class="hint-tag"><span class="emo">${pixSvg(t.icon, 2)}</span><span class="lbl"></span></span></div><p></p>`;
       li.querySelector(".lbl").textContent = t.label;
       li.querySelector("p").innerHTML = esc(h.text).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");   // **like this** = bold
+      if (h.image) {                                       // optional picture: image: "cases/....png", alt: "...", credit: "Source: CDC"
+        const fig = document.createElement("figure"), img = document.createElement("img");
+        img.src = h.image; img.alt = h.alt || ""; img.loading = "lazy";
+        fig.appendChild(img);
+        if (h.credit) { const cap = document.createElement("figcaption"); cap.textContent = h.credit; fig.appendChild(cap); }
+        li.appendChild(fig);
+      }
       if (!isNewest) {
         li.tabIndex = 0; li.setAttribute("role", "button"); li.setAttribute("aria-expanded", open ? "true" : "false");
         const toggle = () => { openHints.has(i) ? openHints.delete(i) : openHints.add(i); render(); hintsEl.children[i]?.focus({ preventScroll: true }); };
